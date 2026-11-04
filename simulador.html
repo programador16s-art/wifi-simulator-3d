@@ -1526,7 +1526,8 @@
         sceneStatus.textContent = "";
         runSimulation(selectedBand).catch((error) => {
           console.error("No se pudo calcular la cobertura WiFi.", error);
-          sceneStatus.textContent = `${error.message} Inicia la API local según backend/README.md.`;
+          const localApiHint = isGitHubPages ? "" : " Inicia la API local según backend/README.md.";
+          sceneStatus.textContent = `${error.message}${localApiHint}`;
         });
         window.addEventListener("pagehide", () => {
           if (animationFrame) window.cancelAnimationFrame(animationFrame);
