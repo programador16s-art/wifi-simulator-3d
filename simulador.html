@@ -1,0 +1,1563 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#211b19">
+  <meta name="description" content="Configura dimensiones, router y obstáculos para explorar una estimación 3D de cobertura WiFi en 2.4 GHz y 5 GHz.">
+  <meta name="wifi-simulator-api" content="">
+  <title>Simulador WiFi 3D — WiFiMap</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script src="api-config.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #211b19;
+      --surface: #2b2421;
+      --surface-raised: #352b26;
+      --coral: #e76f51;
+      --coral-light: #f08a70;
+      --sand: #d6c2a1;
+      --paper: #f7f1e8;
+      --muted: #bbafa2;
+      --line: #493b34;
+      --deep: #191412;
+      --radius: 22px;
+      --content: 1184px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--paper);
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .wrap { width: min(var(--content), calc(100% - 48px)); margin-inline: auto; }
+    .eyebrow {
+      margin: 0;
+      color: var(--coral-light);
+      font: 600 11px/1.4 "Cascadia Code", Consolas, monospace;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .section-title {
+      max-width: 760px;
+      margin: 14px 0 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      letter-spacing: -.055em;
+      line-height: 1.08;
+      font-weight: 650;
+    }
+    .section-lead { max-width: 680px; margin: 16px 0 0; color: var(--muted); font-size: 16px; }
+    .section { padding-block: 104px; }
+
+    .site-header {
+      position: absolute;
+      z-index: 20;
+      top: 0;
+      right: 0;
+      left: 0;
+      background: linear-gradient(180deg, rgb(25 20 18 / 52%), transparent);
+    }
+    .nav {
+      width: min(100% - 80px, 1440px);
+      min-height: 88px;
+      display: flex;
+      margin-inline: auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 30px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; flex-shrink: 0; }
+    .brand-mark { width: 34px; height: 34px; color: var(--coral); }
+    .brand-copy { display: grid; line-height: 1.15; }
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .04em; }
+    .brand-sub { margin-top: 4px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .nav-links { display: flex; align-items: center; gap: clamp(17px, 2.4vw, 34px); }
+    .nav-links a:not(.button) { color: var(--paper); font-size: 13px; transition: color .2s; }
+    .nav-links a:not(.button):hover { color: var(--paper); }
+    .menu-toggle {
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      color: var(--paper);
+      background: var(--surface);
+      cursor: pointer;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 19px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      background: var(--coral);
+      color: var(--deep);
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform .2s, background .2s, border-color .2s;
+    }
+    .button:hover { transform: translateY(-2px); background: var(--coral-light); }
+    .button-secondary { border-color: var(--line); background: var(--surface); color: var(--paper); }
+    .button-secondary:hover { border-color: var(--sand); background: var(--surface-raised); }
+    .button-small { min-height: 40px; padding-inline: 15px; font-size: 12px; }
+    .sr-only { position: absolute; overflow: hidden; width: 1px; height: 1px; padding: 0; border: 0; margin: -1px; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 100vh;
+      min-height: 100svh;
+      isolation: isolate;
+      background: var(--deep);
+    }
+    .hero::before {
+      position: absolute;
+      z-index: 0;
+      top: 2%;
+      right: 8%;
+      width: min(70vw, 940px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgb(231 111 81 / 13%), transparent 68%);
+      content: "";
+      pointer-events: none;
+    }
+    .hero::after {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      background: linear-gradient(90deg, var(--deep) 0%, rgb(25 20 18 / 96%) 27%, rgb(25 20 18 / 62%) 52%, rgb(25 20 18 / 12%) 100%), linear-gradient(0deg, rgb(25 20 18 / 68%), transparent 32%);
+      content: "";
+      pointer-events: none;
+    }
+    .hero-grid {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      width: min(100%, 1440px);
+      min-height: 100vh;
+      min-height: 100svh;
+      margin-inline: auto;
+      align-items: center;
+      padding: 120px 48px 84px;
+      pointer-events: none;
+    }
+    .hero-content { max-width: 560px; animation: hero-rise .85s both; pointer-events: auto; }
+    .hero-scene { position: absolute; z-index: 1; inset: 0; overflow: hidden; }
+    .hero-scene canvas { display: block; width: 100%; height: 100%; }
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 12px;
+      border: 1px solid rgb(214 194 161 / 20%);
+      border-radius: 99px;
+      background: var(--surface);
+      color: var(--sand);
+      font: 10px "Cascadia Code", Consolas, monospace;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 12px rgb(231 111 81 / 65%); }
+    .hero-kicker { margin: 22px 0 0; color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    h1 { max-width: 610px; margin: 13px 0 0; font-size: clamp(3.5rem, 6.4vw, 5.6rem); letter-spacing: -.075em; line-height: .99; font-weight: 680; }
+    h1 span { color: var(--sand); }
+    .hero-copy { max-width: 540px; margin: 23px 0 0; color: var(--muted); font-size: 17px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .hero-note { margin: 19px 0 0; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .055em; }
+
+    .scene-ui { position: absolute; z-index: 4; top: 116px; right: max(38px, calc((100% - 1344px) / 2)); display: grid; justify-items: end; gap: 10px; pointer-events: none; }
+    .scene-card { display: grid; gap: 3px; padding: 11px 14px; border: 1px solid rgb(214 194 161 / 22%); border-radius: 13px; background: rgb(25 20 18 / 76%); backdrop-filter: blur(12px); }
+    .scene-label { color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .scene-title { color: var(--paper); font-size: 12px; font-weight: 600; }
+    .band-switch { display: flex; gap: 4px; padding: 5px; border: 1px solid rgb(214 194 161 / 24%); border-radius: 10px; background: rgb(25 20 18 / 82%); backdrop-filter: blur(12px); pointer-events: auto; }
+    .band-switch button, .scene-reset { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 10px "Cascadia Code", Consolas, monospace; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+    .band-switch button[aria-pressed="true"] { background: var(--coral); color: var(--deep); }
+    .scene-reset { border: 1px solid rgb(214 194 161 / 24%); background: rgb(25 20 18 / 78%); color: var(--paper); backdrop-filter: blur(12px); pointer-events: auto; }
+    .scene-reset:hover { border-color: var(--sand); }
+    .scene-reset:disabled, .band-switch button:disabled { cursor: not-allowed; opacity: .55; }
+    .scene-hint { color: var(--paper); text-shadow: 0 1px 8px var(--deep); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .04em; }
+    .scene-status { max-width: 320px; color: var(--muted); font-size: 11px; text-align: right; }
+    .scene-status:empty { display: none; }
+    .no-webgl .scene-status { padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--paper); }
+    .scroll-cue { position: absolute; z-index: 4; bottom: 28px; left: max(48px, calc((100% - 1344px) / 2)); display: inline-flex; align-items: center; gap: 11px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .scroll-cue::before { width: 27px; height: 1px; background: var(--coral); content: ""; }
+    .simulator-section { background: #1d1715; }
+    .simulator-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .75fr); align-items: start; gap: 18px; margin-top: 36px; }
+    .sim-card { padding: clamp(20px, 3vw, 30px); border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+    .sim-card h3 { margin: 0; font-size: 17px; letter-spacing: -.025em; }
+    .sim-card-intro { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+    .config-group { padding: 0; border: 0; margin: 24px 0 0; }
+    .config-group legend { margin-bottom: 12px; color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .form-field { display: grid; gap: 6px; min-width: 0; }
+    .form-field label { color: var(--muted); font-size: 11px; }
+    .form-field input, .form-field select { width: 100%; min-height: 42px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--deep); color: var(--paper); font: 13px "Cascadia Code", Consolas, monospace; }
+    .form-field input:focus, .form-field select:focus { outline: 2px solid var(--coral); outline-offset: 2px; }
+    .obstacle-list { display: grid; gap: 10px; }
+    .obstacle-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgb(25 20 18 / 45%); }
+    .obstacle-label { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; color: var(--paper); font-size: 12px; font-weight: 600; }
+    .obstacle-fields, .obstacle-material { grid-column: 1 / -1; }
+    .obstacle-remove { min-height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
+    .obstacle-remove:hover { border-color: var(--coral); color: var(--paper); }
+    .obstacle-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 13px; }
+    .obstacle-limit, .form-hint { color: var(--muted); font-size: 11px; }
+    .add-obstacle { min-height: 38px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-raised); color: var(--paper); font-size: 12px; cursor: pointer; }
+    .add-obstacle:hover { border-color: var(--sand); }
+    .sim-submit { margin-top: 22px; }
+    .form-status { min-height: 1.6em; margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+    .form-status[data-state="error"] { color: #ff9a84; }
+    .form-status[data-state="success"] { color: #b7d7bd; }
+    .sim-results { position: sticky; top: 24px; }
+    .result-label { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .result-message { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+    .result-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+    .result-metric { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--deep); }
+    .result-metric span { display: block; color: var(--muted); font-size: 10px; }
+    .result-metric strong { display: block; margin-top: 5px; font: 600 18px "Cascadia Code", Consolas, monospace; }
+    .model-note { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    @keyframes hero-rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .intro-grid { display: grid; grid-template-columns: .9fr 1.1fr; align-items: center; gap: 78px; }
+    .scope-card { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .scope-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--surface-raised); color: var(--sand); font: 9px "Cascadia Code", Consolas, monospace; }
+    .scope-card h3 { margin: 17px 0 0; font-size: 22px; letter-spacing: -.035em; }
+    .scope-card > p { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+    .scope-divider { height: 1px; margin: 20px 0; background: var(--line); }
+    .scope-list { display: grid; gap: 11px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .scope-list li { display: flex; align-items: flex-start; gap: 10px; color: var(--paper); font-size: 13px; }
+    .scope-list li::before { width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--coral); content: ""; flex: 0 0 auto; }
+    .fine-print { margin-top: 20px !important; font-size: 12px !important; }
+    .workflow { background: #1d1715; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 37px; }
+    .step-card { min-height: 210px; padding: 25px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+    .step-no { color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+    .step-card h3 { margin: 18px 0 0; font-size: 20px; letter-spacing: -.035em; }
+    .step-card p { margin: 9px 0 0; color: var(--muted); font-size: 14px; }
+    .future-note { display: flex; align-items: center; gap: 13px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 13px; }
+    .future-note strong { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+
+    .bands-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }
+    .band-card { position: relative; overflow: hidden; min-height: 270px; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+    .band-card::after { position: absolute; right: -55px; bottom: -100px; width: 220px; height: 220px; border: 1px solid rgb(231 111 81 / 18%); border-radius: 50%; box-shadow: 0 0 0 28px rgb(231 111 81 / 3%), 0 0 0 58px rgb(231 111 81 / 2%); content: ""; }
+    .band-card.five::after { border-color: rgb(214 194 161 / 18%); box-shadow: 0 0 0 28px rgb(214 194 161 / 3%), 0 0 0 58px rgb(214 194 161 / 2%); }
+    .band-label { color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .11em; }
+    .band-card.five .band-label { color: var(--sand); }
+    .band-card h3 { position: relative; z-index: 1; max-width: 460px; margin: 14px 0 0; font-size: clamp(1.45rem, 2.5vw, 2rem); line-height: 1.18; letter-spacing: -.04em; }
+    .band-card p { position: relative; z-index: 1; max-width: 470px; margin: 13px 0 0; color: var(--muted); font-size: 14px; }
+    .band-traits { position: relative; z-index: 1; margin: 19px 0 0; color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+    .band-card.five .band-traits { color: var(--sand); }
+    .disclaimer { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
+
+    .faq { background: #1d1715; }
+    .faq-list { display: grid; gap: 10px; margin-top: 34px; }
+    .faq-item { overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .faq-item summary { display: flex; min-height: 65px; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 20px; cursor: pointer; font-size: 15px; font-weight: 600; list-style: none; }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--coral-light); content: "+"; font-size: 17px; font-weight: 400; flex: 0 0 auto; }
+    .faq-item[open] summary::after { content: "−"; }
+    .faq-answer { max-width: 900px; margin: -2px 20px 20px; color: var(--muted); font-size: 14px; }
+
+    .author-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; padding: 18px 22px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .author-label { margin: 0; color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .author-names { display: flex; flex: 1; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; }
+    .author-names li { color: var(--paper); font-size: 12px; font-weight: 550; white-space: nowrap; }
+    .site-footer { display: flex; justify-content: space-between; gap: 24px; margin-top: 34px; padding: 21px 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .footer-brand { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+
+    @media (max-width: 900px) {
+      .hero-grid { padding-inline: 36px; }
+      .hero-content { max-width: 720px; }
+      .intro-grid { grid-template-columns: 1fr 1fr; gap: 35px; }
+      .nav-links { gap: 16px; }
+      .nav-links a:not(.button) { font-size: 12px; }
+      .scroll-cue { left: 36px; }
+    }
+    @media (max-width: 680px) {
+      html { scroll-padding-top: 72px; }
+      .wrap { width: min(100% - 36px, var(--content)); }
+      .section { padding-block: 76px; }
+      .nav { width: calc(100% - 36px); min-height: 68px; }
+      .menu-toggle { display: inline-grid; place-items: center; }
+      .nav-links {
+        position: absolute;
+        top: calc(100% + 1px);
+        right: 0;
+        left: 0;
+        display: none;
+        align-items: stretch;
+        gap: 0;
+        padding: 10px 18px 18px;
+        border: 1px solid var(--line);
+        border-radius: 0 0 16px 16px;
+        background: rgb(25 20 18 / 96%);
+        backdrop-filter: blur(16px);
+      }
+      .nav-links.open { display: flex; flex-direction: column; }
+      .nav-links a:not(.button) { padding: 12px 4px; font-size: 14px; }
+      .nav-links .button { margin-top: 9px; }
+      .hero-grid { min-height: max(100svh, 790px); align-items: flex-end; padding: 43svh 20px 60px; }
+      .hero::after { background: linear-gradient(0deg, var(--deep) 2%, rgb(25 20 18 / 97%) 46%, rgb(25 20 18 / 35%) 86%, rgb(25 20 18 / 20%) 100%); }
+      .hero::before { top: 6%; right: -28%; width: 110vw; }
+      .hero-kicker { margin-top: 13px; font-size: 9px; }
+      h1 { margin-top: 9px; font-size: clamp(2.5rem, 9.5vw, 2.9rem); }
+      .hero-copy { margin-top: 13px; font-size: 14px; }
+      .hero-actions { margin-top: 16px; }
+      .hero-actions .button-secondary { display: none; }
+      .hero-note { margin-top: 11px; font-size: 8px; }
+      .scene-ui { top: 88px; right: 18px; gap: 7px; }
+      .scene-card { padding: 9px 11px; }
+      .scene-hint { max-width: 190px; text-align: right; }
+      .scroll-cue { bottom: 22px; left: 20px; }
+      .intro-grid { grid-template-columns: 1fr; gap: 26px; }
+      .simulator-layout { grid-template-columns: 1fr; }
+      .sim-results { position: static; }
+      .obstacle-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .field-grid { gap: 9px; }
+      .scope-card { padding: 22px; }
+      .steps, .bands-grid { grid-template-columns: 1fr; }
+      .step-card { min-height: 0; }
+      .band-card { min-height: 245px; padding: 23px; }
+      .author-list { align-items: flex-start; flex-direction: column; gap: 9px; padding: 15px 16px; }
+      .author-names { gap: 7px 12px; }
+      .author-names li { font-size: 11px; }
+      .site-footer { flex-direction: column; gap: 10px; }
+      .future-note { align-items: flex-start; flex-direction: column; gap: 7px; }
+    }
+    @media (max-width: 420px) {
+      .obstacle-fields.field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .obstacle-material { grid-column: 1 / -1; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+    body { min-height: 100vh; }
+    .site-header { position: relative; border-bottom: 1px solid var(--line); background: var(--deep); }
+    .nav { width: min(100% - 48px, 1520px); min-height: 66px; }
+    .app-home { display: inline-flex; min-height: 36px; align-items: center; gap: 8px; padding: 0 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--muted); font-size: 11px; transition: border-color .2s, color .2s; }
+    .app-home:hover { border-color: var(--sand); color: var(--paper); }
+    .app-shell { width: min(100% - 48px, 1520px); margin-inline: auto; padding-block: 22px 40px; }
+    .app-heading { margin: 0 0 16px; font-size: clamp(20px, 2vw, 26px); font-weight: 650; letter-spacing: -.04em; }
+    .app-workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(370px, .75fr); align-items: start; gap: 16px; }
+    .hero { min-height: min(820px, calc(100svh - 140px)); height: max(580px, calc(100svh - 140px)); border: 1px solid var(--line); border-radius: 16px; }
+    .hero::after { background: linear-gradient(0deg, rgb(25 20 18 / 38%), transparent 26%); }
+    .hero-grid, .scroll-cue { display: none; }
+    .hero-scene { border-radius: inherit; }
+    .scene-ui { top: 16px; right: 16px; }
+    .scene-hint { padding: 6px 9px; border-radius: 6px; background: rgb(25 20 18 / 66%); }
+    .simulator-section { min-width: 0; padding: 0; background: transparent; }
+    .simulator-section > .wrap { width: 100%; }
+    .simulator-section > .wrap > .eyebrow,
+    .simulator-section > .wrap > .section-title,
+    .simulator-section > .wrap > .section-lead { display: none; }
+    .simulator-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 0; }
+    .sim-card { padding: 18px; border-radius: 15px; }
+    .sim-card h3 { font-size: 15px; }
+    .sim-card-intro { display: none; }
+    .sim-results { position: static; order: -1; }
+    .result-metrics { gap: 7px; margin-top: 12px; }
+    .result-metric { padding: 10px; }
+    .result-metric strong { font-size: 15px; }
+    .model-note { display: none; }
+    .config-group { margin-top: 18px; }
+    .obstacle-row { padding: 10px; }
+    .sim-submit { width: 100%; }
+    .form-status:empty { display: none; }
+    @media (max-width: 900px) {
+      .app-workspace { grid-template-columns: minmax(0, 1fr) minmax(320px, .85fr); gap: 12px; }
+      .app-shell, .nav { width: calc(100% - 32px); }
+      .hero { min-height: 600px; height: calc(100svh - 140px); }
+    }
+    @media (max-width: 680px) {
+      .site-header { position: sticky; top: 0; z-index: 20; }
+      .nav { min-height: 60px; }
+      .brand-mark { width: 30px; height: 30px; }
+      .brand-sub { font-size: 8px; }
+      .app-home { min-height: 34px; padding-inline: 9px; font-size: 10px; }
+      .app-shell { width: calc(100% - 24px); padding-block: 16px 28px; }
+      .app-heading { margin-bottom: 12px; }
+      .app-workspace { grid-template-columns: 1fr; }
+      .hero { min-height: 420px; height: 56svh; }
+      .scene-ui { top: 12px; right: 12px; }
+      .simulator-layout { grid-template-columns: 1fr; }
+      .sim-results { position: static; }
+      .sim-card { padding: 16px; }
+      .obstacle-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .field-grid { gap: 8px; }
+    }
+    @media (max-width: 420px) {
+      .obstacle-fields.field-grid, .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .obstacle-material { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav wrap" aria-label="Navegación principal">
+      <a class="brand" href="./" aria-label="Volver a la página de WiFiMap">
+        <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <path d="M5 13a20 20 0 0 1 26 0M9.5 18a13 13 0 0 1 17 0M14 23a6 6 0 0 1 8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="18" cy="28" r="2" fill="currentColor"/>
+        </svg>
+        <span class="brand-copy"><span class="brand-name">WIFIMAP</span><span class="brand-sub">EXPLORACIÓN 3D</span></span>
+      </a>
+      <a class="app-home" href="./"><span aria-hidden="true">←</span> Página principal</a>
+    </nav>
+  </header>
+
+  <main class="app-shell">
+    <h1 class="app-heading">Simulador de cobertura WiFi</h1>
+    <div class="app-workspace">
+    <section class="hero" id="inicio">
+      <div class="hero-scene" id="hero-scene" role="img" aria-label="Escena 3D del espacio y mapa de cobertura WiFi estimado">
+        <p class="sr-only">Usa los controles para cambiar la banda. Arrastra para girar el modelo y usa la rueda para acercar o alejar.</p>
+      </div>
+      <div class="scene-ui">
+        <div class="scene-card">
+          <span class="scene-label">VISTA 3D</span>
+          <span class="scene-title">Mapa RSSI</span>
+        </div>
+        <div class="band-switch" role="group" aria-label="Cambiar banda de la visualización">
+          <button type="button" data-band="2.4" aria-pressed="true">2.4 GHz</button>
+          <button type="button" data-band="5" aria-pressed="false">5 GHz</button>
+        </div>
+        <button class="scene-reset" type="button" aria-label="Restablecer vista 3D">Restablecer vista</button>
+        <span class="scene-hint">ARRASTRA PARA GIRAR &nbsp;·&nbsp; RUEDA PARA ZOOM</span>
+        <p class="scene-status" id="scene-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="simulator-section" id="simulador" aria-label="Configuración de simulación y resultados">
+      <div class="wrap">
+        <div class="simulator-layout">
+          <form class="sim-card" id="simulation-form">
+            <h3>Parámetros del escenario</h3>
+            <fieldset class="config-group">
+              <legend>Dimensiones del espacio</legend>
+              <div class="field-grid">
+                <div class="form-field"><label for="room-x">Largo X (m)</label><input id="room-x" name="room-x" type="number" min="0.5" max="100" step="any" value="8" required></div>
+                <div class="form-field"><label for="room-y">Ancho Y (m)</label><input id="room-y" name="room-y" type="number" min="0.5" max="100" step="any" value="6" required></div>
+                <div class="form-field"><label for="room-z">Altura Z (m)</label><input id="room-z" name="room-z" type="number" min="0.5" max="30" step="any" value="2.4" required></div>
+              </div>
+            </fieldset>
+            <fieldset class="config-group">
+              <legend>Ubicación del router</legend>
+              <div class="field-grid">
+                <div class="form-field"><label for="router-x">Posición X (m)</label><input id="router-x" name="router-x" type="number" min="0" max="100" step="any" value="3.95" required></div>
+                <div class="form-field"><label for="router-y">Posición Y (m)</label><input id="router-y" name="router-y" type="number" min="0" max="100" step="any" value="2.65" required></div>
+                <div class="form-field"><label for="router-z">Altura Z (m)</label><input id="router-z" name="router-z" type="number" min="0" max="30" step="any" value="0.65" required></div>
+              </div>
+            </fieldset>
+            <fieldset class="config-group">
+              <legend>Resolución de cálculo</legend>
+              <div class="field-grid">
+                <div class="form-field"><label for="voxel-size">Tamaño de vóxel (m)</label><input id="voxel-size" name="voxel-size" type="number" min="0.1" max="5" step="any" value="0.5" required></div>
+              </div>
+              <p class="form-hint">Un valor más pequeño ofrece más detalle y tarda más. Máximo: 20.000 vóxeles.</p>
+            </fieldset>
+            <fieldset class="config-group">
+              <legend>Obstáculos y materiales</legend>
+              <div class="obstacle-list" id="obstacle-list"></div>
+              <div class="obstacle-actions">
+                <span class="obstacle-limit">Hasta 20 obstáculos por escenario. La caja clara indica el volumen usado en el cálculo, incluso para muebles detallados.</span>
+                <button class="add-obstacle" id="add-obstacle" type="button">+ Agregar obstáculo</button>
+              </div>
+            </fieldset>
+            <button class="button sim-submit" id="calculate-button" type="submit">Calcular cobertura <span aria-hidden="true">↗</span></button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </form>
+          <aside class="sim-card sim-results" aria-labelledby="results-title">
+            <span class="result-label">RESULTADO DE LA ESTIMACIÓN</span>
+            <h3 id="results-title">Cobertura simulada</h3>
+            <p class="result-message" id="result-message">Configura el escenario y calcula para ver los indicadores del modelo.</p>
+            <div class="result-metrics" aria-live="polite">
+              <div class="result-metric"><span>RSSI promedio</span><strong id="result-rssi">—</strong></div>
+              <div class="result-metric"><span>Cobertura útil</span><strong id="result-coverage">—</strong></div>
+              <div class="result-metric"><span>SNR promedio</span><strong id="result-snr">—</strong></div>
+              <div class="result-metric"><span>Vóxeles evaluados</span><strong id="result-voxels">—</strong></div>
+            </div>
+            <p class="model-note">Estimación educativa con pérdida en espacio libre y atenuación orientativa por obstáculos. No modela reflexión, difracción ni multipath; no sustituye una medición en sitio.</p>
+          </aside>
+        </div>
+      </div>
+    </section>
+    </div>
+  </main>
+
+  <script>
+    const bandButtons = document.querySelectorAll(".band-switch button");
+    const resetButton = document.querySelector(".scene-reset");
+    const sceneElement = document.querySelector("#hero-scene");
+    const sceneStatus = document.querySelector("#scene-status");
+    const apiBaseUrl = (window.WIFI_SIMULATOR_API ||
+      document.querySelector('meta[name="wifi-simulator-api"]').content).replace(/\/$/, "");
+    const isGitHubPages = window.location.hostname.endsWith("github.io");
+    const simulationForm = document.querySelector("#simulation-form");
+    const obstacleList = document.querySelector("#obstacle-list");
+    const addObstacleButton = document.querySelector("#add-obstacle");
+    const formStatus = document.querySelector("#form-status");
+    const obstacleMaterials = [
+      ["concrete", "Concreto"],
+      ["reinforced_concrete", "Concreto armado"],
+      ["platabanda", "Platabanda / losa"],
+      ["zinc", "Lámina de zinc"],
+      ["glass", "Vidrio"],
+      ["wood", "Madera"],
+      ["drywall", "Drywall / yeso"],
+      ["brick", "Ladrillo"],
+      ["metal", "Metal"]
+    ];
+    const obstacleTypes = [
+      ["box", "Bloque"],
+      ["wall", "Pared"],
+      ["column", "Columna"],
+      ["table", "Mesa"],
+      ["sofa", "Sofá"],
+      ["shelf", "Estantería"],
+      ["cabinet", "Armario"]
+    ];
+    const initialObstacles = [
+      { id: "partition-west", type: "wall", center: { x: 3.2, y: 1.25, z: 1.1 }, dimensions: { x: 0.12, y: 2.5, z: 2.2 }, material: "brick" },
+      { id: "partition-north", type: "wall", center: { x: 3.2, y: 4.35, z: 1.1 }, dimensions: { x: 0.12, y: 1.7, z: 2.2 }, material: "brick" },
+      { id: "partition-east-a", type: "wall", center: { x: 4.2, y: 3.5, z: 1.1 }, dimensions: { x: 2, y: 0.12, z: 2.2 }, material: "brick" },
+      { id: "partition-east-b", type: "wall", center: { x: 7.05, y: 3.5, z: 1.1 }, dimensions: { x: 1.9, y: 0.12, z: 2.2 }, material: "brick" }
+    ];
+    let obstacleCounter = 0;
+
+    function makeObstacleField(label, field, value, max) {
+      const wrapper = document.createElement("div");
+      wrapper.className = "form-field";
+      const fieldLabel = document.createElement("label");
+      fieldLabel.textContent = label;
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = field.startsWith("size-") ? "0.05" : "0";
+      input.max = String(max);
+      input.step = "any";
+      input.required = true;
+      input.dataset.field = field;
+      input.value = String(value);
+      fieldLabel.append(input);
+      wrapper.append(fieldLabel);
+      return wrapper;
+    }
+
+    function addObstacleRow(obstacle = null) {
+      if (obstacleList.children.length >= 20) return;
+      obstacleCounter += 1;
+      const roomX = Number(document.querySelector("#room-x").value) || 8;
+      const roomY = Number(document.querySelector("#room-y").value) || 6;
+      const roomZ = Number(document.querySelector("#room-z").value) || 2.4;
+      const source = obstacle || {
+        id: `obstacle-${obstacleCounter}`,
+        center: { x: Math.min(roomX / 2, roomX - 0.5), y: Math.min(roomY / 2, roomY - 0.5), z: roomZ / 2 },
+        dimensions: { x: Math.min(1, roomX), y: Math.min(0.2, roomY), z: Math.min(2, roomZ) },
+        material: "brick"
+      };
+      const row = document.createElement("div");
+      row.className = "obstacle-row";
+      row.dataset.obstacleId = obstacle?.id || `obstacle-${obstacleCounter}`;
+      const title = document.createElement("div");
+      title.className = "obstacle-label";
+      const titleText = document.createElement("span");
+      titleText.textContent = `Obstáculo ${obstacleList.children.length + 1}`;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "obstacle-remove";
+      remove.textContent = "Quitar";
+      remove.setAttribute("aria-label", `Quitar obstáculo ${obstacleList.children.length + 1}`);
+      title.append(titleText, remove);
+      row.append(title);
+      const typeWrapper = document.createElement("div");
+      typeWrapper.className = "form-field obstacle-material";
+      const typeLabel = document.createElement("label");
+      typeLabel.textContent = "Forma visual (caja de cálculo = dimensiones)";
+      const typeSelect = document.createElement("select");
+      typeSelect.dataset.field = "type";
+      typeSelect.required = true;
+      obstacleTypes.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        typeSelect.append(option);
+      });
+      typeSelect.value = source.type || "box";
+      typeLabel.append(typeSelect);
+      typeWrapper.append(typeLabel);
+      row.append(typeWrapper);
+      const positionFields = document.createElement("div");
+      positionFields.className = "field-grid obstacle-fields";
+      positionFields.append(
+        makeObstacleField("Centro X (m)", "x", source.center.x, 100),
+        makeObstacleField("Centro Y (m)", "y", source.center.y, 100),
+        makeObstacleField("Centro Z (m)", "z", source.center.z, 30)
+      );
+      const sizeFields = document.createElement("div");
+      sizeFields.className = "field-grid obstacle-fields";
+      sizeFields.append(
+        makeObstacleField("Largo X (m)", "size-x", source.dimensions.x, 100),
+        makeObstacleField("Ancho Y (m)", "size-y", source.dimensions.y, 100),
+        makeObstacleField("Alto Z (m)", "size-z", source.dimensions.z, 30)
+      );
+      const materialWrapper = document.createElement("div");
+      materialWrapper.className = "form-field obstacle-material";
+      const materialLabel = document.createElement("label");
+      materialLabel.textContent = "Material";
+      const materialSelect = document.createElement("select");
+      materialSelect.dataset.field = "material";
+      materialSelect.required = true;
+      obstacleMaterials.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        materialSelect.append(option);
+      });
+      materialSelect.value = source.material;
+      materialLabel.append(materialSelect);
+      materialWrapper.append(materialLabel);
+      row.append(positionFields, sizeFields, materialWrapper);
+      obstacleList.append(row);
+      addObstacleButton.disabled = obstacleList.children.length >= 20;
+    }
+
+    initialObstacles.forEach((obstacle) => addObstacleRow(obstacle));
+    addObstacleButton.addEventListener("click", () => addObstacleRow());
+    obstacleList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest(".obstacle-remove");
+      if (!removeButton) return;
+      removeButton.closest(".obstacle-row").remove();
+      Array.from(obstacleList.children).forEach((row, index) => {
+        row.querySelector(".obstacle-label span").textContent = `Obstáculo ${index + 1}`;
+        row.querySelector(".obstacle-remove").setAttribute("aria-label", `Quitar obstáculo ${index + 1}`);
+      });
+      addObstacleButton.disabled = obstacleList.children.length >= 20;
+    });
+
+    function readScenario(band) {
+      const number = (selector) => Number(document.querySelector(selector).value);
+      return {
+        dimensions: { x: number("#room-x"), y: number("#room-y"), z: number("#room-z") },
+        router: { x: number("#router-x"), y: number("#router-y"), z: number("#router-z") },
+        frequency: band,
+        transmit_power_dbm: 20,
+        transmit_antenna_gain_dbi: 0,
+        receive_antenna_gain_dbi: 0,
+        bandwidth_hz: 20000000,
+        noise_figure_db: 7,
+        voxel_size_m: number("#voxel-size"),
+        obstacles: Array.from(obstacleList.querySelectorAll(".obstacle-row"), (row) => {
+          const value = (field) => Number(row.querySelector(`[data-field="${field}"]`).value);
+          return {
+            id: row.dataset.obstacleId,
+            type: row.querySelector('[data-field="type"]').value,
+            center: { x: value("x"), y: value("y"), z: value("z") },
+            dimensions: { x: value("size-x"), y: value("size-y"), z: value("size-z") },
+            material: row.querySelector('[data-field="material"]').value
+          };
+        })
+      };
+    }
+
+    function validateScenario(scenario) {
+      const { dimensions, router, obstacles, voxel_size_m: voxelSize } = scenario;
+      if (router.x > dimensions.x || router.y > dimensions.y || router.z > dimensions.z) {
+        return "El router debe quedar dentro de las dimensiones del espacio.";
+      }
+      for (const obstacle of obstacles) {
+        for (const axis of ["x", "y", "z"]) {
+          if (obstacle.center[axis] - obstacle.dimensions[axis] / 2 < 0 ||
+              obstacle.center[axis] + obstacle.dimensions[axis] / 2 > dimensions[axis]) {
+            return `El obstáculo «${obstacle.id}» excede el espacio en el eje ${axis.toUpperCase()}.`;
+          }
+        }
+        if (["x", "y", "z"].every((axis) =>
+          Math.abs(router[axis] - obstacle.center[axis]) < obstacle.dimensions[axis] / 2
+        )) {
+          return "El router no puede quedar dentro de un obstáculo.";
+        }
+      }
+      const voxelCount = Math.ceil(dimensions.x / voxelSize - 1e-10) *
+        Math.ceil(dimensions.y / voxelSize - 1e-10) *
+        Math.ceil(dimensions.z / voxelSize - 1e-10);
+      if (voxelCount > 20000) {
+        return `La cuadrícula tendría ${new Intl.NumberFormat("es").format(voxelCount)} vóxeles; el máximo es 20.000. Aumenta el tamaño del vóxel.`;
+      }
+      return "";
+    }
+
+    async function initializeScene() {
+      try {
+        const THREE = await import("three");
+        const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+        camera.position.set(11, 10, 14);
+        camera.lookAt(0, 0, 0);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.domElement.tabIndex = 0;
+        renderer.domElement.setAttribute("aria-label", "Escena 3D interactiva. Usa las flechas para girar y la rueda para acercar o alejar.");
+        sceneElement.append(renderer.domElement);
+
+        scene.add(new THREE.HemisphereLight(0xf7f1e8, 0x2a2522, 1.45));
+        const keyLight = new THREE.DirectionalLight(0xfff0dc, 2.4);
+        keyLight.position.set(-4, 9, 5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(1024, 1024);
+        keyLight.shadow.camera.near = 0.5;
+        keyLight.shadow.camera.far = 80;
+        keyLight.shadow.bias = -0.00025;
+        keyLight.shadow.normalBias = 0.025;
+        scene.add(keyLight);
+        const fillLight = new THREE.PointLight(0xf0dfcc, 16, 22);
+        fillLight.position.set(1, 4, -2);
+        scene.add(fillLight);
+
+        const model = new THREE.Group();
+        scene.add(model);
+
+        const generatedTextures = new Set();
+        const surfaceTextureCache = new Map();
+        function createSurfaceTexture(style) {
+          const cached = surfaceTextureCache.get(style);
+          if (cached) return cached;
+
+          const size = 128;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const context = canvas.getContext("2d");
+          if (!context) throw new Error("No se pudieron crear las texturas PBR del escenario.");
+          const image = context.createImageData(size, size);
+          const roughness = context.createImageData(size, size);
+          const heights = new Float32Array(size * size);
+          let seed = Array.from(style).reduce((value, character) => (value * 31 + character.charCodeAt(0)) >>> 0, 17);
+          const random = () => {
+            seed = (seed * 1664525 + 1013904223) >>> 0;
+            return seed / 4294967296;
+          };
+
+          for (let y = 0; y < size; y += 1) {
+            for (let x = 0; x < size; x += 1) {
+              const index = y * size + x;
+              const grain = random() - 0.5;
+              let color = 222 + grain * 15;
+              let height = 0.5 + grain * 0.035;
+              let rough = 0.82 + grain * 0.08;
+
+              if (style === "wood") {
+                const grainLine = Math.sin((x + 5 * Math.sin(y * 0.055)) * 0.34);
+                color += grainLine * 9 + Math.sin(x * 0.08 + y * 0.12) * 4;
+                height += grainLine * 0.018;
+                rough = 0.72 + grainLine * 0.08 + grain * 0.035;
+              } else if (style === "fabric") {
+                const weave = ((x % 4 === 0) ? 5 : 0) + ((y % 4 === 0) ? 4 : 0);
+                color += weave + grain * 9;
+                height += weave * 0.002 + grain * 0.012;
+                rough = 0.94 + grain * 0.035;
+              } else if (style === "brick") {
+                const row = Math.floor(y / 16);
+                const localX = (x + (row % 2) * 16) % 32;
+                const mortar = y % 16 < 2 || localX < 2;
+                color = mortar ? 154 + grain * 8 : 211 + grain * 14;
+                height = mortar ? 0.38 + grain * 0.025 : 0.57 + grain * 0.04;
+                rough = mortar ? 0.92 : 0.86 + grain * 0.05;
+              } else if (style === "metal") {
+                const brushed = Math.sin(y * 1.45) * 3;
+                color = 226 + brushed + grain * 5;
+                height = 0.5 + brushed * 0.0015 + grain * 0.008;
+                rough = 0.4 + Math.abs(brushed) * 0.015 + Math.abs(grain) * 0.035;
+              } else if (style === "glass") {
+                color = 238 + grain * 3;
+                height = 0.5 + grain * 0.002;
+                rough = 0.18 + Math.abs(grain) * 0.025;
+              } else {
+                color += Math.sin(x * 0.19) * 2 + Math.sin(y * 0.23) * 2;
+                height += grain * 0.018;
+                rough += grain * 0.04;
+              }
+
+              const base = Math.max(0, Math.min(255, Math.round(color)));
+              const roughValue = Math.max(0, Math.min(255, Math.round(rough * 255)));
+              image.data.set([base, base, base, 255], index * 4);
+              roughness.data.set([roughValue, roughValue, roughValue, 255], index * 4);
+              heights[index] = height;
+            }
+          }
+
+          const colorCanvas = document.createElement("canvas");
+          colorCanvas.width = size;
+          colorCanvas.height = size;
+          const colorContext = colorCanvas.getContext("2d");
+          const roughnessCanvas = document.createElement("canvas");
+          roughnessCanvas.width = size;
+          roughnessCanvas.height = size;
+          const roughnessContext = roughnessCanvas.getContext("2d");
+          if (!colorContext || !roughnessContext) throw new Error("No se pudieron preparar los mapas PBR.");
+          colorContext.putImageData(image, 0, 0);
+          roughnessContext.putImageData(roughness, 0, 0);
+          const normalCanvas = document.createElement("canvas");
+          normalCanvas.width = size;
+          normalCanvas.height = size;
+          const normalContext = normalCanvas.getContext("2d");
+          const normalImage = normalContext.createImageData(size, size);
+          for (let y = 0; y < size; y += 1) {
+            for (let x = 0; x < size; x += 1) {
+              const index = y * size + x;
+              const left = heights[y * size + (x + size - 1) % size];
+              const right = heights[y * size + (x + 1) % size];
+              const up = heights[((y + size - 1) % size) * size + x];
+              const down = heights[((y + 1) % size) * size + x];
+              const nx = (left - right) * 2.2;
+              const ny = (up - down) * 2.2;
+              const inverseLength = 1 / Math.hypot(nx, ny, 1);
+              normalImage.data.set([
+                Math.round((nx * inverseLength * 0.5 + 0.5) * 255),
+                Math.round((ny * inverseLength * 0.5 + 0.5) * 255),
+                Math.round((inverseLength * 0.5 + 0.5) * 255),
+                255
+              ], index * 4);
+            }
+          }
+          normalContext.putImageData(normalImage, 0, 0);
+
+          const makeTexture = (source, colorSpace = THREE.NoColorSpace) => {
+            const texture = new THREE.CanvasTexture(source);
+            texture.colorSpace = colorSpace;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+            return texture;
+          };
+          const maps = {
+            map: makeTexture(colorCanvas, THREE.SRGBColorSpace),
+            roughnessMap: makeTexture(roughnessCanvas),
+            normalMap: makeTexture(normalCanvas)
+          };
+          surfaceTextureCache.set(style, maps);
+          return maps;
+        }
+
+        function createPbrMaterial(style, options, repeatX = 1, repeatY = 1) {
+          const maps = createSurfaceTexture(style);
+          const materialMaps = Object.fromEntries(
+            Object.entries(maps).map(([name, source]) => {
+              const texture = source.clone();
+              texture.repeat.set(repeatX, repeatY);
+              texture.needsUpdate = true;
+              generatedTextures.add(texture);
+              return [name, texture];
+            })
+          );
+          const material = new THREE.MeshStandardMaterial({
+            ...materialMaps,
+            normalScale: new THREE.Vector2(0.12, 0.12),
+            ...options
+          });
+          material.userData.generatedTextures = Object.values(materialMaps);
+          return material;
+        }
+
+        function disposeMaterial(material) {
+          if (Array.isArray(material)) {
+            material.forEach(disposeMaterial);
+            return;
+          }
+          material?.userData.generatedTextures?.forEach((texture) => {
+            texture.dispose();
+            generatedTextures.delete(texture);
+          });
+          material?.dispose();
+        }
+
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(8, 6),
+          createPbrMaterial("wood", { color: 0x80634c, roughness: 0.78, metalness: 0 }, 8 / 1.5, 6 / 1.5)
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.015;
+        floor.receiveShadow = true;
+        model.add(floor);
+
+        const roomGeometry = new THREE.Group();
+        const obstacleGeometry = new THREE.Group();
+        model.add(roomGeometry, obstacleGeometry);
+        const obstacleColors = {
+          concrete: 0x9b8272,
+          reinforced_concrete: 0x756960,
+          platabanda: 0x9d8b72,
+          zinc: 0x89969a,
+          glass: 0x8cb8be,
+          wood: 0x9b704d,
+          drywall: 0xd1bb9c,
+          brick: 0x9c5e4d,
+          metal: 0x8d959b
+        };
+        let currentDimensions = { x: 8, y: 6, z: 2.4 };
+        function clearGroup(group) {
+          while (group.children.length) {
+            const child = group.children[0];
+            group.remove(child);
+            child.geometry?.dispose();
+            disposeMaterial(child.material);
+          }
+        }
+
+        function rebuildRoom(dimensions) {
+          currentDimensions = dimensions;
+          floor.geometry.dispose();
+          floor.geometry = new THREE.PlaneGeometry(dimensions.x, dimensions.y);
+          floor.material.userData.generatedTextures.forEach((texture) => {
+            texture.repeat.set(dimensions.x / 1.5, dimensions.y / 1.5);
+            texture.needsUpdate = true;
+          });
+          clearGroup(roomGeometry);
+          const positions = [];
+          for (let x = 0; x <= dimensions.x; x += 1) {
+            const worldX = x - dimensions.x / 2;
+            positions.push(worldX, 0.006, -dimensions.y / 2, worldX, 0.006, dimensions.y / 2);
+          }
+          for (let y = 0; y <= dimensions.y; y += 1) {
+            const worldZ = y - dimensions.y / 2;
+            positions.push(-dimensions.x / 2, 0.006, worldZ, dimensions.x / 2, 0.006, worldZ);
+          }
+          const gridGeometry = new THREE.BufferGeometry();
+          gridGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+          roomGeometry.add(new THREE.LineSegments(
+            gridGeometry,
+            new THREE.LineBasicMaterial({ color: 0x9b8067, transparent: true, opacity: 0.38 })
+          ));
+          const wallHeight = dimensions.z;
+          const wallThickness = Math.min(0.12, dimensions.x / 20, dimensions.y / 20);
+          const edges = [
+            [dimensions.x, wallThickness, dimensions.x / 2, wallHeight / 2, 0],
+            [dimensions.x, wallThickness, -dimensions.x / 2, wallHeight / 2, 0],
+            [wallThickness, dimensions.y, 0, wallHeight / 2, dimensions.y / 2],
+            [wallThickness, dimensions.y, 0, wallHeight / 2, -dimensions.y / 2]
+          ];
+          edges.forEach(([width, depth, x, y, z]) => {
+            const wall = new THREE.Mesh(
+              new THREE.BoxGeometry(width, wallHeight, depth),
+              createPbrMaterial("plaster", {
+                color: 0xb9a18b,
+                roughness: 0.88,
+                metalness: 0,
+                transparent: true,
+                opacity: 0.44,
+                depthWrite: false,
+                side: THREE.DoubleSide
+              }, Math.max(width, depth) / 1.5, wallHeight / 1.5)
+            );
+            wall.position.set(x, y, z);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            roomGeometry.add(wall);
+          });
+
+          const trimHeight = Math.min(0.09, wallHeight * 0.06);
+          const trims = [
+            [dimensions.x, wallThickness, 0, trimHeight / 2, -dimensions.y / 2 + wallThickness],
+            [dimensions.x, wallThickness, 0, trimHeight / 2, dimensions.y / 2 - wallThickness],
+            [wallThickness, dimensions.y, -dimensions.x / 2 + wallThickness, trimHeight / 2, 0],
+            [wallThickness, dimensions.y, dimensions.x / 2 - wallThickness, trimHeight / 2, 0]
+          ];
+          trims.forEach(([width, height, x, y, z]) => {
+            const trim = new THREE.Mesh(
+              new THREE.BoxGeometry(width, trimHeight, height),
+              new THREE.MeshStandardMaterial({ color: 0x8f7159, roughness: 0.68 })
+            );
+            trim.position.set(x, y, z);
+            trim.castShadow = true;
+            roomGeometry.add(trim);
+          });
+        }
+
+        function rebuildObstacles(obstacles) {
+          clearGroup(obstacleGeometry);
+          obstacles.forEach((obstacle) => {
+            const { center, dimensions } = obstacle;
+            const position = new THREE.Vector3(
+              center.x - currentDimensions.x / 2,
+              center.z,
+              center.y - currentDimensions.y / 2
+            );
+            const materialStyle = {
+              concrete: "concrete",
+              reinforced_concrete: "concrete",
+              platabanda: "concrete",
+              zinc: "metal",
+              glass: "glass",
+              wood: "wood",
+              drywall: "plaster",
+              brick: "brick",
+              metal: "metal"
+            }[obstacle.material];
+            const isGlass = obstacle.material === "glass";
+            const isMetal = obstacle.material === "metal" || obstacle.material === "zinc";
+            const pbrOptions = {
+              color: obstacleColors[obstacle.material],
+              roughness: isGlass ? 0.2 : isMetal ? 0.4 : 0.86,
+              metalness: isMetal ? 0.62 : 0,
+              transparent: true,
+              opacity: isGlass ? 0.3 : 0.76,
+              depthWrite: false,
+              side: THREE.DoubleSide
+            };
+            const group = new THREE.Group();
+            group.position.copy(position);
+            obstacleGeometry.add(group);
+
+            if (["table", "sofa", "shelf", "cabinet", "column"].includes(obstacle.type)) {
+              const addPart = (width, height, depth, x, y, z, color, style = "wood", roughness = 0.76) => {
+                if (width <= 0.01 || height <= 0.01 || depth <= 0.01) return;
+                const part = new THREE.Mesh(
+                  new THREE.BoxGeometry(width, height, depth),
+                  createPbrMaterial(style, { color, roughness, metalness: 0 }, Math.max(width, depth), height)
+                );
+                part.position.set(x, y, z);
+                part.castShadow = true;
+                part.receiveShadow = true;
+                group.add(part);
+              };
+              const dx = dimensions.x;
+              const depth = dimensions.y;
+              const height = dimensions.z;
+              const bottom = -height / 2;
+              const top = height / 2;
+              const wood = obstacle.material === "wood" ? obstacleColors.wood : 0x8c715c;
+              const fabric = obstacle.material === "wood" ? 0x81705f : obstacleColors[obstacle.material];
+
+              if (obstacle.type === "column") {
+                const radius = Math.max(0.025, Math.min(dx, depth) * 0.46);
+                const column = new THREE.Mesh(
+                  new THREE.CylinderGeometry(radius, radius, height, 20, 1),
+                  createPbrMaterial(materialStyle, { ...pbrOptions, transparent: true, opacity: 0.82 }, 1, height)
+                );
+                column.castShadow = true;
+                column.receiveShadow = true;
+                group.add(column);
+              } else if (obstacle.type === "table") {
+                const topThickness = Math.min(height * 0.14, 0.09);
+                const legWidth = Math.min(dx * 0.1, depth * 0.1, 0.08);
+                const legHeight = Math.max(0.01, height - topThickness);
+                addPart(dx, topThickness, depth, 0, top - topThickness / 2, 0, wood);
+                [-1, 1].forEach((sideX) => [-1, 1].forEach((sideZ) => {
+                  addPart(
+                    legWidth, legHeight, legWidth,
+                    sideX * (dx / 2 - legWidth / 2),
+                    bottom + legHeight / 2,
+                    sideZ * (depth / 2 - legWidth / 2),
+                    wood
+                  );
+                }));
+              } else if (obstacle.type === "sofa") {
+                const legHeight = Math.min(height * 0.12, 0.12);
+                const seatHeight = Math.min(top - 0.025, Math.max(bottom + legHeight + 0.025, height * 0.48));
+                const armWidth = Math.min(dx * 0.16, 0.18);
+                const backDepth = Math.min(depth * 0.2, 0.16);
+                const bodyHeight = Math.max(0.02, seatHeight - bottom - legHeight);
+                addPart(dx, bodyHeight, depth, 0, bottom + legHeight + bodyHeight / 2, 0, wood);
+                addPart(dx, Math.max(0.025, top - seatHeight), backDepth, 0, (top + seatHeight) / 2, -depth / 2 + backDepth / 2, fabric, "fabric", 0.95);
+                addPart(armWidth, Math.max(0.025, top - seatHeight * 0.72), depth, -dx / 2 + armWidth / 2, (top + seatHeight * 0.72) / 2, 0, fabric, "fabric", 0.95);
+                addPart(armWidth, Math.max(0.025, top - seatHeight * 0.72), depth, dx / 2 - armWidth / 2, (top + seatHeight * 0.72) / 2, 0, fabric, "fabric", 0.95);
+                const cushionWidth = Math.max(0.02, (dx - armWidth * 2) * 0.48);
+                [-1, 1].forEach((side) => {
+                  addPart(cushionWidth, Math.max(0.025, height * 0.1), Math.max(0.02, depth - backDepth - 0.025),
+                    side * (cushionWidth / 2 + armWidth * 0.12), seatHeight, backDepth / 2,
+                    fabric, "fabric", 0.95);
+                });
+                [-1, 1].forEach((sideX) => [-1, 1].forEach((sideZ) => {
+                  addPart(legHeight * 0.45, legHeight, legHeight * 0.45,
+                    sideX * (dx / 2 - legHeight * 0.6), bottom + legHeight / 2,
+                    sideZ * (depth / 2 - legHeight * 0.6), wood);
+                }));
+              } else {
+                const panel = Math.min(0.06, dx * 0.08, depth * 0.12);
+                const shelfCount = 4;
+                addPart(panel, height, depth, -dx / 2 + panel / 2, 0, 0, wood);
+                addPart(panel, height, depth, dx / 2 - panel / 2, 0, 0, wood);
+                addPart(dx, panel, depth, 0, bottom + panel / 2, 0, wood);
+                addPart(dx, panel, depth, 0, top - panel / 2, 0, wood);
+                if (obstacle.type === "shelf") {
+                  const backThickness = Math.min(0.035, depth * 0.08);
+                  addPart(dx - panel * 2, height - panel * 2, backThickness, 0, 0, -depth / 2 + backThickness / 2, fabric, "plaster", 0.9);
+                  for (let shelfIndex = 1; shelfIndex < shelfCount; shelfIndex += 1) {
+                    const shelfY = bottom + (height * shelfIndex) / shelfCount;
+                    addPart(dx - panel * 2, panel, depth - backThickness, 0, shelfY, backThickness / 2, wood);
+                    if (dx > 0.35 && shelfIndex < shelfCount - 1) {
+                      const bookWidth = Math.min(dx * 0.12, 0.11);
+                      const bookHeight = Math.min(height * 0.16, Math.max(0.04, height / shelfCount - panel));
+                      [-1, 0, 1].forEach((bookIndex) => {
+                        addPart(bookWidth, bookHeight, Math.max(0.025, depth * 0.32),
+                          bookIndex * bookWidth * 1.15,
+                          shelfY + panel / 2 + bookHeight / 2,
+                          depth * 0.12,
+                          [0x9c5e4d, 0x6e8575, 0xd0b27e][bookIndex + 1],
+                          "fabric", 0.9);
+                      });
+                    }
+                  }
+                } else {
+                  addPart(dx - panel * 2, height - panel * 2, panel, 0, 0, -depth / 2 + panel / 2, wood);
+                  addPart(dx * 0.48, height - panel * 2, panel * 0.35, -dx * 0.24, 0, depth / 2 - panel * 0.35, fabric, "plaster", 0.85);
+                  addPart(dx * 0.48, height - panel * 2, panel * 0.35, dx * 0.24, 0, depth / 2 - panel * 0.35, fabric, "plaster", 0.85);
+                }
+              }
+
+              const proxy = new THREE.LineSegments(
+                new THREE.EdgesGeometry(new THREE.BoxGeometry(dx, height, depth)),
+                new THREE.LineBasicMaterial({ color: 0xf7f1e8, transparent: true, opacity: 0.52 })
+              );
+              proxy.renderOrder = 2;
+              group.add(proxy);
+            } else {
+              const box = new THREE.Mesh(
+                new THREE.BoxGeometry(dimensions.x, dimensions.z, dimensions.y),
+                createPbrMaterial(materialStyle, pbrOptions, dimensions.x / 1.5, dimensions.y / 1.5)
+              );
+              box.castShadow = true;
+              box.receiveShadow = true;
+              group.add(box);
+              group.add(new THREE.LineSegments(
+                new THREE.EdgesGeometry(box.geometry),
+                new THREE.LineBasicMaterial({ color: obstacleColors[obstacle.material], transparent: true, opacity: 0.9 })
+              ));
+            }
+          });
+        }
+
+        const router = new THREE.Group();
+        model.add(router);
+        const routerShape = new THREE.Shape();
+        const routerWidth = 0.7;
+        const routerDepth = 0.42;
+        const cornerRadius = 0.08;
+        routerShape.moveTo(-routerWidth / 2 + cornerRadius, -routerDepth / 2);
+        routerShape.lineTo(routerWidth / 2 - cornerRadius, -routerDepth / 2);
+        routerShape.quadraticCurveTo(routerWidth / 2, -routerDepth / 2, routerWidth / 2, -routerDepth / 2 + cornerRadius);
+        routerShape.lineTo(routerWidth / 2, routerDepth / 2 - cornerRadius);
+        routerShape.quadraticCurveTo(routerWidth / 2, routerDepth / 2, routerWidth / 2 - cornerRadius, routerDepth / 2);
+        routerShape.lineTo(-routerWidth / 2 + cornerRadius, routerDepth / 2);
+        routerShape.quadraticCurveTo(-routerWidth / 2, routerDepth / 2, -routerWidth / 2, routerDepth / 2 - cornerRadius);
+        routerShape.lineTo(-routerWidth / 2, -routerDepth / 2 + cornerRadius);
+        routerShape.quadraticCurveTo(-routerWidth / 2, -routerDepth / 2, -routerWidth / 2 + cornerRadius, -routerDepth / 2);
+        const routerBody = new THREE.Mesh(
+          new THREE.ExtrudeGeometry(routerShape, {
+            depth: 0.11,
+            bevelEnabled: true,
+            bevelSegments: 3,
+            bevelSize: 0.025,
+            bevelThickness: 0.025,
+            curveSegments: 8
+          }),
+          new THREE.MeshStandardMaterial({ color: 0x383331, roughness: 0.34, metalness: 0.12 })
+        );
+        routerBody.rotation.x = -Math.PI / 2;
+        routerBody.position.y = 0.14;
+        routerBody.castShadow = true;
+        routerBody.receiveShadow = true;
+        router.add(routerBody);
+        const antennaMaterial = new THREE.MeshStandardMaterial({ color: 0xddd4c7, roughness: 0.42, metalness: 0.28 });
+        [-0.24, 0.24].forEach((x) => {
+          const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.56, 8), antennaMaterial);
+          antenna.position.set(x, 0.49, -0.08);
+          antenna.rotation.z = x < 0 ? 0.12 : -0.12;
+          antenna.castShadow = true;
+          router.add(antenna);
+        });
+        const routerDetailMaterial = new THREE.MeshStandardMaterial({ color: 0x938577, roughness: 0.52, metalness: 0.3 });
+        for (let index = 0; index < 5; index += 1) {
+          const vent = new THREE.Mesh(new THREE.BoxGeometry(0.045, 0.012, 0.012), routerDetailMaterial);
+          vent.position.set(-0.12 + index * 0.06, 0.255, -0.02);
+          router.add(vent);
+        }
+        const led = new THREE.Mesh(
+          new THREE.SphereGeometry(0.035, 12, 8),
+          new THREE.MeshBasicMaterial({ color: 0xffddaa })
+        );
+        led.position.set(0, 0.17, 0.22);
+        router.add(led);
+
+        const coverageMaterial = new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          uniforms: { uColor: { value: new THREE.Color(0xe76f51) }, uTime: { value: 0 } },
+          vertexShader: `
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 uColor;
+            uniform float uTime;
+            varying vec2 vUv;
+            void main() {
+              float distanceFromCenter = length((vUv - 0.5) * 2.0);
+              float edge = 1.0 - smoothstep(0.62, 1.0, distanceFromCenter);
+              float pulse = 0.9 + 0.1 * sin(uTime * 1.5);
+              float alpha = exp(-distanceFromCenter * 2.0) * edge * 0.58 * pulse;
+              if (alpha < 0.015) discard;
+              gl_FragColor = vec4(uColor, alpha);
+              #include <tonemapping_fragment>
+              #include <colorspace_fragment>
+            }
+          `
+        });
+        const coverage = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), coverageMaterial);
+        coverage.rotation.x = -Math.PI / 2;
+        model.add(coverage);
+        const heatmapSlices = [];
+
+        const rippleMaterial = new THREE.MeshBasicMaterial({
+          color: 0xe76f51,
+          transparent: true,
+          opacity: 0.32,
+          depthWrite: false
+        });
+        const ripples = [0.72, 1.28, 1.84].map((radius) => {
+          const ripple = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.012, 6, 80), rippleMaterial.clone());
+          ripple.rotation.x = Math.PI / 2;
+          model.add(ripple);
+          return ripple;
+        });
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.055;
+        controls.maxPolarAngle = Math.PI / 2.05;
+
+        let selectedBand = "2.4";
+        function setBand(band) {
+          selectedBand = band;
+          const is24 = band === "2.4";
+          const color = is24 ? 0xe76f51 : 0xd6c2a1;
+          coverageMaterial.uniforms.uColor.value.setHex(color);
+          rippleMaterial.color.setHex(color);
+          ripples.forEach((ripple) => ripple.material.color.setHex(color));
+          const radius = is24 ? 4.7 : 3.35;
+          coverage.scale.set(
+            Math.min(currentDimensions.x, radius * 2),
+            Math.min(currentDimensions.y, radius * 2),
+            1
+          );
+          bandButtons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.band === band));
+          });
+        }
+
+        function updateScene(scenario) {
+          rebuildRoom(scenario.dimensions);
+          rebuildObstacles(scenario.obstacles);
+          const routerX = scenario.router.x - scenario.dimensions.x / 2;
+          const routerZ = scenario.router.y - scenario.dimensions.y / 2;
+          const routerY = scenario.router.z - 0.14;
+          router.position.set(routerX, routerY, routerZ);
+          coverage.position.set(routerX, scenario.router.z + 0.025, routerZ);
+          ripples.forEach((ripple) => ripple.position.set(routerX, scenario.router.z + 0.045, routerZ));
+          const center = new THREE.Vector3(model.position.x, scenario.dimensions.z / 2, 0);
+          const scale = Math.max(scenario.dimensions.x, scenario.dimensions.y, scenario.dimensions.z, 4);
+          keyLight.position.set(center.x - scale, center.y + scale * 2, center.z + scale);
+          keyLight.target.position.copy(center);
+          fillLight.position.set(center.x + scale * 0.3, center.y + scale * 0.8, center.z - scale * 0.4);
+          keyLight.shadow.camera.left = -scale;
+          keyLight.shadow.camera.right = scale;
+          keyLight.shadow.camera.top = scale;
+          keyLight.shadow.camera.bottom = -scale;
+          keyLight.shadow.camera.far = Math.max(80, scale * 6);
+          keyLight.shadow.camera.updateProjectionMatrix();
+          camera.far = Math.max(100, scale * 6);
+          camera.position.set(center.x + scale * 1.1, center.y + scale, center.z + scale * 1.35);
+          camera.lookAt(center);
+          camera.updateProjectionMatrix();
+          controls.target.copy(center);
+          controls.minDistance = Math.max(2, scale * 0.5);
+          controls.maxDistance = Math.max(19, scale * 4);
+          controls.update();
+          controls.saveState();
+          setBand(selectedBand);
+        }
+
+        function clearHeatmap() {
+          heatmapSlices.forEach((slice) => {
+            model.remove(slice);
+            slice.geometry.dispose();
+            slice.material.map.dispose();
+            slice.material.dispose();
+          });
+          heatmapSlices.length = 0;
+          coverage.visible = true;
+          ripples.forEach((ripple) => {
+            ripple.visible = true;
+          });
+        }
+
+        bandButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            setBand(button.dataset.band);
+            runSimulation(button.dataset.band).catch((error) => {
+              console.error("No se pudo calcular la cobertura WiFi.", error);
+              sceneStatus.textContent = error.message;
+              formStatus.textContent = error.message;
+              formStatus.dataset.state = "error";
+            });
+          });
+        });
+        resetButton.addEventListener("click", () => controls.reset());
+        setBand(selectedBand);
+
+        function signalColor(dbm) {
+          const stops = [
+            { value: -90, color: [135, 49, 56] },
+            { value: -75, color: [231, 111, 81] },
+            { value: -60, color: [214, 194, 161] },
+            { value: -45, color: [135, 169, 146] }
+          ];
+          const value = THREE.MathUtils.clamp(dbm, stops[0].value, stops[stops.length - 1].value);
+          const nextIndex = stops.findIndex((stop) => stop.value >= value);
+          const lower = stops[Math.max(0, nextIndex - 1)];
+          const upper = stops[Math.max(0, nextIndex)];
+          const ratio = upper.value === lower.value ? 0 : (value - lower.value) / (upper.value - lower.value);
+          return lower.color.map((channel, index) => Math.round(channel + (upper.color[index] - channel) * ratio));
+        }
+
+        function makeHeatmapTexture(rssiLayer, validLayer) {
+          const height = rssiLayer.length;
+          const width = rssiLayer[0].length;
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          const image = context.createImageData(width, height);
+          for (let y = 0; y < height; y += 1) {
+            for (let x = 0; x < width; x += 1) {
+              const index = ((height - 1 - y) * width + x) * 4;
+              if (!validLayer[y][x]) continue;
+              const [red, green, blue] = signalColor(rssiLayer[y][x]);
+              image.data[index] = red;
+              image.data[index + 1] = green;
+              image.data[index + 2] = blue;
+              image.data[index + 3] = 205;
+            }
+          }
+          context.putImageData(image, 0, 0);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.magFilter = THREE.LinearFilter;
+          texture.minFilter = THREE.LinearFilter;
+          return texture;
+        }
+
+        function displaySimulation(result, request) {
+          const { grid, fields, statistics } = result;
+          const selectedSlices = [...new Set([0, Math.floor(grid.z_m.length / 2), grid.z_m.length - 1])];
+          clearHeatmap();
+          coverage.visible = false;
+          ripples.forEach((ripple) => {
+            ripple.visible = false;
+          });
+
+          selectedSlices.forEach((sliceIndex) => {
+            const texture = makeHeatmapTexture(
+              fields.rssi_dbm_zyx[sliceIndex],
+              fields.valid_zyx[sliceIndex]
+            );
+            const slice = new THREE.Mesh(
+              new THREE.PlaneGeometry(request.dimensions.x, request.dimensions.y),
+              new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true,
+                opacity: 0.76,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+                toneMapped: false
+              })
+            );
+            slice.rotation.x = -Math.PI / 2;
+            slice.position.set(0, grid.z_m[sliceIndex] + 0.035, 0);
+            model.add(slice);
+            heatmapSlices.push(slice);
+          });
+
+          const average = statistics.average_rssi_dbm.toFixed(1);
+          const useful = statistics.useful_coverage_percent.toFixed(1);
+          sceneStatus.textContent = `${result.frequency_ghz} GHz · RSSI promedio ${average} dBm · cobertura útil ${useful}% (voxeles válidos)`;
+          document.querySelector("#result-rssi").textContent = `${average} dBm`;
+          document.querySelector("#result-coverage").textContent = `${useful}%`;
+          document.querySelector("#result-snr").textContent = `${statistics.average_snr_db.toFixed(1)} dB`;
+          document.querySelector("#result-voxels").textContent = new Intl.NumberFormat("es").format(
+            grid.shape_zyx.reduce((total, size) => total * size, 1)
+          );
+          document.querySelector("#result-message").textContent =
+            `${result.frequency_ghz} GHz · espacio ${request.dimensions.x} × ${request.dimensions.y} × ${request.dimensions.z} m · ${request.obstacles.length} obstáculos`;
+          formStatus.textContent = "Estimación actualizada. La escena muestra tres cortes del mapa RSSI.";
+          formStatus.dataset.state = "success";
+          renderer.render(scene, camera);
+        }
+
+        let requestSequence = 0;
+        async function runSimulation(band) {
+          if (!simulationForm.checkValidity()) {
+            simulationForm.reportValidity();
+            throw new Error("Revisa los valores del formulario antes de calcular.");
+          }
+          const request = readScenario(band);
+          const validationError = validateScenario(request);
+          if (validationError) throw new Error(validationError);
+          if (isGitHubPages && !apiBaseUrl) {
+            throw new Error("La API de Python todavía no está conectada a esta página de GitHub Pages.");
+          }
+          const sequence = ++requestSequence;
+          updateScene(request);
+          clearHeatmap();
+          sceneStatus.textContent = `Calculando cobertura para ${band} GHz...`;
+          formStatus.textContent = `Calculando escenario en ${band} GHz...`;
+          formStatus.dataset.state = "";
+          try {
+            let response;
+            try {
+              response = await fetch(`${apiBaseUrl}/api/simulacion/calcular`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(request)
+              });
+            } catch (error) {
+              if (sequence !== requestSequence) return;
+              throw new Error("No se pudo conectar con la API. Inicia el servidor local según backend/README.md.", { cause: error });
+            }
+            let body;
+            try {
+              body = await response.json();
+            } catch {
+              throw new Error("La respuesta no corresponde a la API de simulación.");
+            }
+            if (!response.ok) {
+              throw new Error(body.detail || `La API respondió con estado ${response.status}.`);
+            }
+            if (sequence !== requestSequence) return;
+            displaySimulation(body, request);
+          } catch (error) {
+            if (sequence !== requestSequence) return;
+            throw error;
+          }
+        }
+
+        simulationForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          runSimulation(selectedBand).catch((error) => {
+            console.error("No se pudo calcular la cobertura WiFi.", error);
+            sceneStatus.textContent = error.message;
+            formStatus.textContent = error.message;
+            formStatus.dataset.state = "error";
+          });
+        });
+
+        const resizeObserver = new ResizeObserver(() => {
+          const width = sceneElement.clientWidth;
+          const height = sceneElement.clientHeight;
+          if (!width || !height) return;
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height, false);
+          renderer.render(scene, camera);
+        });
+        resizeObserver.observe(sceneElement);
+
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        let animationFrame;
+        function renderFrame(time) {
+          coverageMaterial.uniforms.uTime.value = time * 0.001;
+          ripples.forEach((ripple, index) => {
+            const phase = (time * 0.00035 + index / ripples.length) % 1;
+            const scale = 0.8 + phase * (selectedBand === "2.4" ? 1.9 : 1.35);
+            ripple.scale.setScalar(scale);
+            ripple.material.opacity = 0.34 * (1 - phase);
+          });
+          controls.update();
+          renderer.render(scene, camera);
+          animationFrame = window.requestAnimationFrame(renderFrame);
+        }
+        function updateMotion() {
+          if (animationFrame) window.cancelAnimationFrame(animationFrame);
+          animationFrame = 0;
+          if (reducedMotion.matches) {
+            ripples.forEach((ripple, index) => {
+              ripple.scale.setScalar(0.9 + index * 0.28);
+              ripple.material.opacity = 0.22;
+            });
+            renderer.render(scene, camera);
+          } else {
+            animationFrame = window.requestAnimationFrame(renderFrame);
+          }
+        }
+        reducedMotion.addEventListener("change", updateMotion);
+        updateMotion();
+        sceneStatus.textContent = "";
+        runSimulation(selectedBand).catch((error) => {
+          console.error("No se pudo calcular la cobertura WiFi.", error);
+          sceneStatus.textContent = `${error.message} Inicia la API local según backend/README.md.`;
+        });
+        window.addEventListener("pagehide", () => {
+          if (animationFrame) window.cancelAnimationFrame(animationFrame);
+          resizeObserver.disconnect();
+          controls.dispose();
+          clearGroup(roomGeometry);
+          clearGroup(obstacleGeometry);
+          disposeMaterial(floor.material);
+          surfaceTextureCache.forEach((maps) => Object.values(maps).forEach((texture) => texture.dispose()));
+          generatedTextures.forEach((texture) => texture.dispose());
+          generatedTextures.clear();
+          surfaceTextureCache.clear();
+          heatmapSlices.forEach((slice) => {
+            slice.geometry.dispose();
+            slice.material.map.dispose();
+            slice.material.dispose();
+          });
+          renderer.dispose();
+        }, { once: true });
+      } catch (error) {
+        console.error("No se pudo iniciar la escena 3D.", error);
+        document.querySelector(".hero").classList.add("no-webgl");
+        sceneStatus.textContent = "No se pudo cargar la escena 3D. Comprueba tu conexión y que el navegador permita WebGL.";
+        bandButtons.forEach((button) => {
+          button.disabled = true;
+        });
+        resetButton.disabled = true;
+      }
+    }
+
+    initializeScene();
+  </script>
+</body>
+</html>

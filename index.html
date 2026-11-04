@@ -4,16 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#211b19">
-  <meta name="description" content="Explora la propuesta de WiFiMap en una escena 3D interactiva y conoce cómo se estima la cobertura en las bandas de 2.4 GHz y 5 GHz.">
-  <title>WiFiMap — Visualiza tu WiFi</title>
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
-      }
-    }
-  </script>
+  <meta name="description" content="Descubre WiFiMap: explora una estimación 3D de cobertura WiFi y configura tu propio espacio en el simulador interactivo.">
+  <title>WiFiMap — Explora la cobertura WiFi</title>
   <style>
     :root {
       color-scheme: dark;
@@ -27,295 +19,357 @@
       --muted: #bbafa2;
       --line: #493b34;
       --deep: #191412;
-      --radius: 22px;
       --content: 1184px;
     }
 
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    html { scroll-behavior: smooth; scroll-padding-top: 82px; }
     body {
+      min-width: 320px;
       margin: 0;
-      background: var(--bg);
+      background: var(--deep);
       color: var(--paper);
       font-family: "Segoe UI", "Helvetica Neue", sans-serif;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
     }
     a { color: inherit; text-decoration: none; }
-    button { font: inherit; }
     .wrap { width: min(var(--content), calc(100% - 48px)); margin-inline: auto; }
-    .eyebrow {
-      margin: 0;
-      color: var(--coral-light);
-      font: 600 11px/1.4 "Cascadia Code", Consolas, monospace;
-      letter-spacing: .13em;
-      text-transform: uppercase;
-    }
-    .section-title {
-      max-width: 760px;
-      margin: 14px 0 0;
-      font-size: clamp(2rem, 4vw, 3.2rem);
-      letter-spacing: -.055em;
-      line-height: 1.08;
-      font-weight: 650;
-    }
-    .section-lead { max-width: 680px; margin: 16px 0 0; color: var(--muted); font-size: 16px; }
-    .section { padding-block: 104px; }
-
-    .site-header {
-      position: absolute;
-      z-index: 20;
-      top: 0;
-      right: 0;
-      left: 0;
-      background: linear-gradient(180deg, rgb(25 20 18 / 52%), transparent);
-    }
+    .site-header { position: absolute; z-index: 2; inset: 0 0 auto; }
     .nav {
-      width: min(100% - 80px, 1440px);
-      min-height: 88px;
       display: flex;
-      margin-inline: auto;
+      min-height: 88px;
       align-items: center;
       justify-content: space-between;
-      gap: 30px;
+      gap: 24px;
     }
-    .brand { display: inline-flex; align-items: center; gap: 11px; flex-shrink: 0; }
-    .brand-mark { width: 34px; height: 34px; color: var(--coral); }
+    .brand { display: inline-flex; align-items: center; gap: 11px; }
+    .brand-mark { width: 35px; height: 35px; color: var(--coral); }
     .brand-copy { display: grid; line-height: 1.15; }
     .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .04em; }
     .brand-sub { margin-top: 4px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
-    .nav-links { display: flex; align-items: center; gap: clamp(17px, 2.4vw, 34px); }
-    .nav-links a:not(.button) { color: var(--paper); font-size: 13px; transition: color .2s; }
-    .nav-links a:not(.button):hover { color: var(--paper); }
-    .menu-toggle {
-      display: none;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      width: 44px;
-      height: 44px;
-      color: var(--paper);
-      background: var(--surface);
-      cursor: pointer;
-    }
-
-    .button {
-      display: inline-flex;
-      min-height: 48px;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      padding: 0 19px;
-      border: 1px solid transparent;
-      border-radius: 13px;
-      background: var(--coral);
-      color: var(--deep);
-      font-size: 13px;
-      font-weight: 700;
-      transition: transform .2s, background .2s, border-color .2s;
-    }
-    .button:hover { transform: translateY(-2px); background: var(--coral-light); }
-    .button-secondary { border-color: var(--line); background: var(--surface); color: var(--paper); }
-    .button-secondary:hover { border-color: var(--sand); background: var(--surface-raised); }
-    .button-small { min-height: 40px; padding-inline: 15px; font-size: 12px; }
-    .sr-only { position: absolute; overflow: hidden; width: 1px; height: 1px; padding: 0; border: 0; margin: -1px; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
-
+    .nav-links { display: flex; align-items: center; gap: clamp(14px, 2vw, 26px); }
+    .nav-links a:not(.nav-cta) { color: var(--paper); font-size: 12px; transition: color .2s; }
+    .nav-links a:not(.nav-cta):hover { color: var(--sand); }
+    .nav-action { color: var(--muted); font-size: 13px; transition: color .2s; }
+    .nav-action:hover { color: var(--paper); }
+    .nav-cta { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; padding-inline: 16px; border-radius: 999px; background: var(--coral); color: var(--deep); font-size: 11px; font-weight: 750; transition: background .2s; }
+    .nav-cta:hover { background: var(--coral-light); }
+    .menu-toggle { display: none; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--paper); cursor: pointer; }
     .hero {
       position: relative;
-      overflow: hidden;
-      min-height: 100vh;
+      display: grid;
+      min-height: 760px;
       min-height: 100svh;
+      align-items: center;
+      overflow: hidden;
       isolation: isolate;
-      background: var(--deep);
+      background:
+        radial-gradient(ellipse at 74% 44%, rgb(231 111 81 / 15%), transparent 37%),
+        radial-gradient(ellipse at 16% 90%, rgb(214 194 161 / 7%), transparent 34%),
+        var(--deep);
     }
-    .hero::before {
-      position: absolute;
-      z-index: 0;
-      top: 2%;
-      right: 8%;
-      width: min(70vw, 940px);
-      aspect-ratio: 1;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgb(231 111 81 / 13%), transparent 68%);
-      content: "";
-      pointer-events: none;
+    .hero-copy { animation: hero-arrive .8s cubic-bezier(.2, .75, .25, 1) both; }
+    .visual { animation: hero-arrive .95s .12s cubic-bezier(.2, .75, .25, 1) both; }
+    @keyframes hero-arrive {
+      from { opacity: 0; transform: translateY(22px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .hero::after {
       position: absolute;
-      z-index: 2;
+      z-index: -1;
       inset: 0;
-      background: linear-gradient(90deg, var(--deep) 0%, rgb(25 20 18 / 96%) 27%, rgb(25 20 18 / 62%) 52%, rgb(25 20 18 / 12%) 100%), linear-gradient(0deg, rgb(25 20 18 / 68%), transparent 32%);
+      background-image: linear-gradient(rgb(247 241 232 / 2.5%) 1px, transparent 1px), linear-gradient(90deg, rgb(247 241 232 / 2.5%) 1px, transparent 1px);
+      background-size: 56px 56px;
+      mask-image: linear-gradient(90deg, transparent, #000 72%);
       content: "";
       pointer-events: none;
     }
-    .hero-grid {
-      position: relative;
-      z-index: 3;
-      display: flex;
-      width: min(100%, 1440px);
-      min-height: 100vh;
-      min-height: 100svh;
-      margin-inline: auto;
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(0, .92fr) minmax(400px, 1.08fr);
       align-items: center;
-      padding: 120px 48px 84px;
-      pointer-events: none;
+      gap: 28px;
+      padding-block: 125px 76px;
     }
-    .hero-content { max-width: 560px; animation: hero-rise .85s both; pointer-events: auto; }
-    .hero-scene { position: absolute; z-index: 1; inset: 0; overflow: hidden; }
-    .hero-scene canvas { display: block; width: 100%; height: 100%; }
-    .status {
+    .hero-copy { position: relative; z-index: 1; max-width: 590px; }
+    .eyebrow {
       display: inline-flex;
-      width: fit-content;
       align-items: center;
       gap: 9px;
-      padding: 7px 12px;
-      border: 1px solid rgb(214 194 161 / 20%);
-      border-radius: 99px;
-      background: var(--surface);
-      color: var(--sand);
-      font: 10px "Cascadia Code", Consolas, monospace;
-      letter-spacing: .06em;
+      margin: 0;
+      color: var(--coral-light);
+      font: 600 10px/1.4 "Cascadia Code", Consolas, monospace;
+      letter-spacing: .14em;
       text-transform: uppercase;
     }
-    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 12px rgb(231 111 81 / 65%); }
-    .hero-kicker { margin: 22px 0 0; color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
-    h1 { max-width: 610px; margin: 13px 0 0; font-size: clamp(3.5rem, 6.4vw, 5.6rem); letter-spacing: -.075em; line-height: .99; font-weight: 680; }
+    .eyebrow::before { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 14px rgb(231 111 81 / 65%); content: ""; }
+    h1 { margin: 22px 0 0; font-size: clamp(3.2rem, 6.4vw, 5.4rem); font-weight: 680; letter-spacing: -.075em; line-height: .99; }
     h1 span { color: var(--sand); }
-    .hero-copy { max-width: 540px; margin: 23px 0 0; color: var(--muted); font-size: 17px; }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
-    .hero-note { margin: 19px 0 0; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .055em; }
-
-    .scene-ui { position: absolute; z-index: 4; top: 116px; right: max(38px, calc((100% - 1344px) / 2)); display: grid; justify-items: end; gap: 10px; pointer-events: none; }
-    .scene-card { display: grid; gap: 3px; padding: 11px 14px; border: 1px solid rgb(214 194 161 / 22%); border-radius: 13px; background: rgb(25 20 18 / 76%); backdrop-filter: blur(12px); }
-    .scene-label { color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
-    .scene-title { color: var(--paper); font-size: 12px; font-weight: 600; }
-    .band-switch { display: flex; gap: 4px; padding: 5px; border: 1px solid rgb(214 194 161 / 24%); border-radius: 10px; background: rgb(25 20 18 / 82%); backdrop-filter: blur(12px); pointer-events: auto; }
-    .band-switch button, .scene-reset { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 10px "Cascadia Code", Consolas, monospace; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
-    .band-switch button[aria-pressed="true"] { background: var(--coral); color: var(--deep); }
-    .scene-reset { border: 1px solid rgb(214 194 161 / 24%); background: rgb(25 20 18 / 78%); color: var(--paper); backdrop-filter: blur(12px); pointer-events: auto; }
-    .scene-reset:hover { border-color: var(--sand); }
-    .scene-reset:disabled, .band-switch button:disabled { cursor: not-allowed; opacity: .55; }
-    .scene-hint { color: var(--paper); text-shadow: 0 1px 8px var(--deep); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .04em; }
-    .scene-status { max-width: 320px; color: var(--muted); font-size: 11px; text-align: right; }
-    .scene-status:empty { display: none; }
-    .no-webgl .scene-status { padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--paper); }
-    .scroll-cue { position: absolute; z-index: 4; bottom: 28px; left: max(48px, calc((100% - 1344px) / 2)); display: inline-flex; align-items: center; gap: 11px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
-    .scroll-cue::before { width: 27px; height: 1px; background: var(--coral); content: ""; }
-    @keyframes hero-rise {
-      from { opacity: 0; transform: translateY(18px); }
-      to { opacity: 1; transform: translateY(0); }
+    .lead { max-width: 500px; margin: 23px 0 0; color: var(--muted); font-size: 16px; }
+    .hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 31px; }
+    .button {
+      display: inline-flex;
+      min-height: 58px;
+      align-items: center;
+      justify-content: center;
+      gap: 13px;
+      padding: 0 23px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      background: var(--coral);
+      box-shadow: 0 12px 35px rgb(231 111 81 / 24%);
+      color: var(--deep);
+      font-size: 14px;
+      font-weight: 750;
+      transition: transform .2s, background .2s, box-shadow .2s;
     }
+    .button:hover { transform: translateY(-3px); background: var(--coral-light); box-shadow: 0 16px 38px rgb(231 111 81 / 32%); }
+    .button:focus-visible, .nav-action:focus-visible { outline: 2px solid var(--sand); outline-offset: 4px; }
+    .button-arrow { font-size: 20px; line-height: 1; }
+    .action-note { color: var(--muted); font-size: 11px; }
+    .trust-row { display: flex; flex-wrap: wrap; gap: 9px 18px; margin-top: 34px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .07em; text-transform: uppercase; }
+    .trust-row span { display: inline-flex; align-items: center; gap: 7px; }
+    .trust-row span::before { width: 5px; height: 5px; border-radius: 50%; background: var(--sand); content: ""; }
+    .visual { position: relative; min-height: 490px; perspective: 1000px; }
+    .visual-glow { position: absolute; top: 8%; left: 18%; width: 68%; aspect-ratio: 1; border-radius: 50%; background: rgb(231 111 81 / 14%); filter: blur(80px); animation: glow-breathe 7s ease-in-out infinite alternate; }
+    @keyframes glow-breathe {
+      from { opacity: .55; transform: scale(.94); }
+      to { opacity: 1; transform: scale(1.06); }
+    }
+    .room {
+      position: absolute;
+      top: 14%;
+      left: 13%;
+      width: 75%;
+      height: 68%;
+      transform: rotateX(58deg) rotateZ(-34deg);
+      transform-style: preserve-3d;
+      border: 1px solid rgb(214 194 161 / 65%);
+      background:
+        linear-gradient(rgb(214 194 161 / 10%) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(214 194 161 / 10%) 1px, transparent 1px),
+        linear-gradient(135deg, rgb(231 111 81 / 13%), rgb(53 43 38 / 74%) 60%);
+      background-size: 30px 30px, 30px 30px, auto;
+      box-shadow: 28px 32px 0 rgb(53 43 38 / 72%), 0 35px 80px rgb(0 0 0 / 35%);
+      animation: room-float 6s ease-in-out infinite alternate;
+    }
+    @keyframes room-float {
+      from { translate: 0 0; }
+      to { translate: 0 -9px; }
+    }
+    .room::before, .room::after { position: absolute; background: linear-gradient(180deg, rgb(214 194 161 / 52%), rgb(73 59 52 / 54%)); content: ""; }
+    .room::before { right: -1px; bottom: 0; width: 1px; height: 100%; transform: translateX(100%) skewY(-32deg); transform-origin: left; }
+    .room::after { right: 0; bottom: -1px; width: 100%; height: 1px; transform: translateY(100%) skewX(-58deg); transform-origin: top; }
+    .partition { position: absolute; z-index: 1; background: linear-gradient(90deg, rgb(214 194 161 / 75%), rgb(156 121 101 / 75%)); box-shadow: 0 8px 18px rgb(0 0 0 / 26%); }
+    .partition-one { top: 0; left: 48%; width: 9px; height: 59%; }
+    .partition-two { top: 59%; left: 28%; width: 38%; height: 8px; }
+    .router {
+      position: absolute;
+      z-index: 2;
+      top: 39%;
+      left: 41%;
+      width: 50px;
+      height: 32px;
+      border: 1px solid rgb(255 221 170 / 80%);
+      border-radius: 8px;
+      background: var(--coral);
+      box-shadow: 0 0 0 8px rgb(231 111 81 / 12%), 0 0 32px rgb(231 111 81 / 70%);
+      transform: translateZ(22px);
+    }
+    .router::before, .router::after { position: absolute; top: -19px; width: 3px; height: 22px; border-radius: 5px; background: var(--paper); content: ""; }
+    .router::before { left: 10px; transform: rotate(-12deg); }
+    .router::after { right: 10px; transform: rotate(12deg); }
+    .signal {
+      position: absolute;
+      z-index: 1;
+      top: 30%;
+      left: 28%;
+      width: 145px;
+      aspect-ratio: 1;
+      border: 1px solid rgb(231 111 81 / 64%);
+      border-radius: 50%;
+      box-shadow: 0 0 0 22px rgb(231 111 81 / 12%), 0 0 0 46px rgb(231 111 81 / 9%), 0 0 0 70px rgb(231 111 81 / 6%);
+      transform: translateZ(10px);
+      animation: signal-pulse 4.8s ease-in-out infinite;
+    }
+    @keyframes signal-pulse {
+      0%, 100% { box-shadow: 0 0 0 18px rgb(231 111 81 / 9%), 0 0 0 40px rgb(231 111 81 / 7%), 0 0 0 62px rgb(231 111 81 / 4%); }
+      50% { box-shadow: 0 0 0 25px rgb(231 111 81 / 15%), 0 0 0 53px rgb(231 111 81 / 10%), 0 0 0 81px rgb(231 111 81 / 6%); }
+    }
+    .signal::after { position: absolute; inset: 18px; border: 1px dashed rgb(247 241 232 / 45%); border-radius: 50%; content: ""; }
+    .float-card {
+      position: absolute;
+      z-index: 3;
+      display: grid;
+      gap: 4px;
+      min-width: 146px;
+      padding: 12px 15px;
+      border: 1px solid rgb(214 194 161 / 25%);
+      border-radius: 12px;
+      background: rgb(25 20 18 / 88%);
+      box-shadow: 0 15px 40px rgb(0 0 0 / 26%);
+      backdrop-filter: blur(14px);
+    }
+    .float-card small { color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+    .float-card strong { color: var(--paper); font: 600 17px "Cascadia Code", Consolas, monospace; }
+    .float-card em { color: #b7d7bd; font-size: 10px; font-style: normal; }
+    .card-signal { top: 13%; right: 1%; }
+    .card-band { bottom: 12%; left: 5%; }
+    .card-band strong { color: var(--sand); }
+    .visual-caption { position: absolute; right: 2%; bottom: 0; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .below { padding-block: 30px 74px; }
+    .below-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .benefit {
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgb(43 36 33 / 68%);
+      transition: border-color .25s, transform .25s, background .25s;
+    }
+    @media (hover: hover) {
+      .benefit:hover { transform: translateY(-4px); border-color: rgb(231 111 81 / 45%); background: var(--surface); }
+      .step-card:hover, .band-card:hover { transform: translateY(-5px); border-color: rgb(231 111 81 / 42%); }
+    }
+    .benefit-icon { display: grid; width: 36px; height: 36px; place-items: center; flex: 0 0 auto; border-radius: 10px; background: rgb(231 111 81 / 13%); color: var(--coral-light); font-size: 16px; }
+    .benefit h2 { margin: 0; font-size: 14px; letter-spacing: -.02em; }
+    .benefit p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .project-section {
+      position: relative;
+      overflow: hidden;
+      padding-block: 84px;
+      background:
+        radial-gradient(ellipse at 92% 10%, rgb(222 235 220 / 88%), transparent 34%),
+        radial-gradient(ellipse at 3% 95%, rgb(242 224 194 / 76%), transparent 38%),
+        linear-gradient(125deg, #fffefa 0%, #f8f6f0 45%, #f1f3eb 100%);
+      color: #26332e;
+      isolation: isolate;
+    }
+    .project-section::before {
+      position: absolute;
+      z-index: -1;
+      top: -55%;
+      right: -9%;
+      width: min(60vw, 760px);
+      aspect-ratio: 1;
+      border: 1px solid rgb(73 116 91 / 12%);
+      border-radius: 50%;
+      box-shadow: 0 0 0 24px rgb(73 116 91 / 3%), 0 0 0 62px rgb(185 87 61 / 3%), 0 0 0 112px rgb(73 116 91 / 2%);
+      content: "";
+      pointer-events: none;
+    }
+    .project-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; gap: 70px; }
+    .section-label { margin: 0 0 14px; color: #47745b; font: 600 10px "Cascadia Code", Consolas, monospace; letter-spacing: .13em; text-transform: uppercase; }
+    .editorial-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2.4rem, 4.5vw, 3.8rem); font-weight: 400; letter-spacing: -.055em; line-height: 1.04; }
+    .project-copy { color: #46534a; font-size: 15px; }
+    .project-copy p { margin: 0 0 14px; }
+    .project-note { padding-left: 14px; border-left: 2px solid #b9573d; color: #687166; font-size: 12px; }
+    .how-section { padding-block: 78px; background: #1d1715; }
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+    .section-heading .editorial-title { max-width: 650px; }
+    .section-aside { max-width: 350px; margin: 0 0 4px; color: var(--muted); font-size: 12px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 30px; }
+    .step-card { min-height: 190px; padding: 22px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); transition: transform .25s, border-color .25s; }
+    .step-index { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .step-card h3 { margin: 30px 0 8px; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 400; }
+    .step-card p { margin: 0; color: var(--muted); font-size: 12px; }
+    .bands-section { padding-block: 76px; background: #302720; color: var(--paper); }
+    .bands-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 28px; }
+    .band-card { min-height: 205px; padding: 23px; border: 1px solid rgb(214 194 161 / 18%); border-radius: 14px; background: rgb(25 20 18 / 45%); transition: transform .25s, border-color .25s; }
+    .band-label { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .12em; }
+    .band-card h3 { margin: 27px 0 8px; font-family: Georgia, "Times New Roman", serif; font-size: 25px; font-weight: 400; letter-spacing: -.035em; }
+    .band-card p { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; }
+    .scope-section { padding-block: 76px; background: var(--bg); }
+    .scope-grid { display: grid; grid-template-columns: .8fr 1.2fr; align-items: center; gap: 58px; }
+    .scope-mark { display: grid; min-height: 210px; place-items: center; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); color: var(--sand); }
+    .scope-mark svg { width: 76px; height: 76px; }
+    .scope-copy .editorial-title { font-size: clamp(2.1rem, 3.8vw, 3.1rem); }
+    .scope-copy p:last-child { margin: 15px 0 0; color: var(--muted); font-size: 12px; }
+    .authors-section { padding-block: 70px; background: #1d1715; color: var(--paper); }
+    .authors-heading { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 18px; }
+    .authors-heading p:last-child { max-width: 360px; margin: 0; color: var(--muted); font-size: 12px; }
+    .author-list { display: grid; grid-template-columns: repeat(3, 1fr); margin: 26px 0 0; padding: 0; border-top: 1px solid var(--line); list-style: none; }
+    .author-list li { padding: 13px 4px; border-bottom: 1px solid var(--line); color: var(--paper); font-size: 12px; }
+    .site-footer { padding-block: 21px; border-top: 1px solid var(--line); background: var(--deep); color: var(--muted); font-size: 10px; }
+    .footer-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+    .footer { padding-block: 22px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
 
-    .intro-grid { display: grid; grid-template-columns: .9fr 1.1fr; align-items: center; gap: 78px; }
-    .scope-card { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-    .scope-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--surface-raised); color: var(--sand); font: 9px "Cascadia Code", Consolas, monospace; }
-    .scope-card h3 { margin: 17px 0 0; font-size: 22px; letter-spacing: -.035em; }
-    .scope-card > p { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
-    .scope-divider { height: 1px; margin: 20px 0; background: var(--line); }
-    .scope-list { display: grid; gap: 11px; margin: 12px 0 0; padding: 0; list-style: none; }
-    .scope-list li { display: flex; align-items: flex-start; gap: 10px; color: var(--paper); font-size: 13px; }
-    .scope-list li::before { width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--coral); content: ""; flex: 0 0 auto; }
-    .fine-print { margin-top: 20px !important; font-size: 12px !important; }
-    .workflow { background: #1d1715; }
-    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 37px; }
-    .step-card { min-height: 210px; padding: 25px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
-    .step-no { color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
-    .step-card h3 { margin: 18px 0 0; font-size: 20px; letter-spacing: -.035em; }
-    .step-card p { margin: 9px 0 0; color: var(--muted); font-size: 14px; }
-    .future-note { display: flex; align-items: center; gap: 13px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 13px; }
-    .future-note strong { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
-
-    .bands-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }
-    .band-card { position: relative; overflow: hidden; min-height: 270px; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
-    .band-card::after { position: absolute; right: -55px; bottom: -100px; width: 220px; height: 220px; border: 1px solid rgb(231 111 81 / 18%); border-radius: 50%; box-shadow: 0 0 0 28px rgb(231 111 81 / 3%), 0 0 0 58px rgb(231 111 81 / 2%); content: ""; }
-    .band-card.five::after { border-color: rgb(214 194 161 / 18%); box-shadow: 0 0 0 28px rgb(214 194 161 / 3%), 0 0 0 58px rgb(214 194 161 / 2%); }
-    .band-label { color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .11em; }
-    .band-card.five .band-label { color: var(--sand); }
-    .band-card h3 { position: relative; z-index: 1; max-width: 460px; margin: 14px 0 0; font-size: clamp(1.45rem, 2.5vw, 2rem); line-height: 1.18; letter-spacing: -.04em; }
-    .band-card p { position: relative; z-index: 1; max-width: 470px; margin: 13px 0 0; color: var(--muted); font-size: 14px; }
-    .band-traits { position: relative; z-index: 1; margin: 19px 0 0; color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
-    .band-card.five .band-traits { color: var(--sand); }
-    .disclaimer { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
-
-    .faq { background: #1d1715; }
-    .faq-list { display: grid; gap: 10px; margin-top: 34px; }
-    .faq-item { overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
-    .faq-item summary { display: flex; min-height: 65px; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 20px; cursor: pointer; font-size: 15px; font-weight: 600; list-style: none; }
-    .faq-item summary::-webkit-details-marker { display: none; }
-    .faq-item summary::after { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--coral-light); content: "+"; font-size: 17px; font-weight: 400; flex: 0 0 auto; }
-    .faq-item[open] summary::after { content: "−"; }
-    .faq-answer { max-width: 900px; margin: -2px 20px 20px; color: var(--muted); font-size: 14px; }
-
-    .author-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; padding: 18px 22px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
-    .author-label { margin: 0; color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
-    .author-names { display: flex; flex: 1; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; }
-    .author-names li { color: var(--paper); font-size: 12px; font-weight: 550; white-space: nowrap; }
-    .site-footer { display: flex; justify-content: space-between; gap: 24px; margin-top: 34px; padding: 21px 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-    .footer-brand { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+    .motion-ready .reveal {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity .65s ease, transform .65s cubic-bezier(.2, .75, .25, 1);
+    }
+    .motion-ready .reveal.is-visible { opacity: 1; transform: translateY(0); }
+    .motion-ready .steps .reveal:nth-child(2),
+    .motion-ready .bands-grid .reveal:nth-child(2) { transition-delay: .12s; }
+    .motion-ready .steps .reveal:nth-child(3) { transition-delay: .24s; }
 
     @media (max-width: 900px) {
-      .hero-grid { padding-inline: 36px; }
-      .hero-content { max-width: 720px; }
-      .intro-grid { grid-template-columns: 1fr 1fr; gap: 35px; }
-      .nav-links { gap: 16px; }
-      .nav-links a:not(.button) { font-size: 12px; }
-      .scroll-cue { left: 36px; }
+      .hero-layout { grid-template-columns: 1fr; gap: 0; padding-top: 140px; }
+      .hero-copy { max-width: 700px; }
+      h1 { max-width: 700px; }
+      .visual { min-height: 420px; margin-top: 2px; }
+      .room { left: 18%; width: 67%; }
+      .card-signal { right: 6%; }
+      .card-band { left: 9%; }
+      .nav-links { gap: 12px; }
+      .nav-links a:not(.nav-cta) { font-size: 11px; }
+      .project-grid, .scope-grid { gap: 36px; }
     }
-    @media (max-width: 680px) {
-      html { scroll-padding-top: 72px; }
-      .wrap { width: min(100% - 36px, var(--content)); }
-      .section { padding-block: 76px; }
-      .nav { width: calc(100% - 36px); min-height: 68px; }
-      .menu-toggle { display: inline-grid; place-items: center; }
-      .nav-links {
-        position: absolute;
-        top: calc(100% + 1px);
-        right: 0;
-        left: 0;
-        display: none;
-        align-items: stretch;
-        gap: 0;
-        padding: 10px 18px 18px;
-        border: 1px solid var(--line);
-        border-radius: 0 0 16px 16px;
-        background: rgb(25 20 18 / 96%);
-        backdrop-filter: blur(16px);
-      }
+    @media (max-width: 560px) {
+      .wrap { width: min(var(--content), calc(100% - 36px)); }
+      .nav { min-height: 74px; }
+      .menu-toggle { display: grid; place-items: center; }
+      .nav-links { position: absolute; top: calc(100% - 1px); right: 0; left: 0; display: none; align-items: stretch; gap: 0; padding: 8px 18px 16px; border-bottom: 1px solid var(--line); background: rgb(25 20 18 / 98%); }
       .nav-links.open { display: flex; flex-direction: column; }
-      .nav-links a:not(.button) { padding: 12px 4px; font-size: 14px; }
-      .nav-links .button { margin-top: 9px; }
-      .hero-grid { min-height: max(100svh, 790px); align-items: flex-end; padding: 43svh 20px 60px; }
-      .hero::after { background: linear-gradient(0deg, var(--deep) 2%, rgb(25 20 18 / 97%) 46%, rgb(25 20 18 / 35%) 86%, rgb(25 20 18 / 20%) 100%); }
-      .hero::before { top: 6%; right: -28%; width: 110vw; }
-      .hero-kicker { margin-top: 13px; font-size: 9px; }
-      h1 { margin-top: 9px; font-size: clamp(2.5rem, 9.5vw, 2.9rem); }
-      .hero-copy { margin-top: 13px; font-size: 14px; }
-      .hero-actions { margin-top: 16px; }
-      .hero-actions .button-secondary { display: none; }
-      .hero-note { margin-top: 11px; font-size: 8px; }
-      .scene-ui { top: 88px; right: 18px; gap: 7px; }
-      .scene-card { padding: 9px 11px; }
-      .scene-hint { max-width: 190px; text-align: right; }
-      .scroll-cue { bottom: 22px; left: 20px; }
-      .intro-grid { grid-template-columns: 1fr; gap: 26px; }
-      .scope-card { padding: 22px; }
-      .steps, .bands-grid { grid-template-columns: 1fr; }
-      .step-card { min-height: 0; }
-      .band-card { min-height: 245px; padding: 23px; }
-      .author-list { align-items: flex-start; flex-direction: column; gap: 9px; padding: 15px 16px; }
-      .author-names { gap: 7px 12px; }
-      .author-names li { font-size: 11px; }
-      .site-footer { flex-direction: column; gap: 10px; }
-      .future-note { align-items: flex-start; flex-direction: column; gap: 7px; }
+      .nav-links a:not(.nav-cta) { padding: 10px 2px; color: var(--paper); font-size: 13px; }
+      .nav-links .nav-cta { margin-top: 8px; }
+      .hero { min-height: 0; }
+      .hero-layout { padding-block: 122px 36px; }
+      h1 { margin-top: 17px; font-size: clamp(2.8rem, 12vw, 4rem); }
+      .lead { margin-top: 16px; font-size: 14px; }
+      .hero-actions { align-items: flex-start; flex-direction: column; gap: 11px; margin-top: 23px; }
+      .button { width: 100%; min-height: 56px; }
+      .trust-row { gap: 8px 13px; margin-top: 23px; font-size: 8px; }
+      .visual { min-height: 325px; margin: 13px -10px 0; }
+      .room { top: 16%; left: 14%; width: 73%; height: 66%; }
+      .signal { top: 30%; left: 25%; width: 105px; box-shadow: 0 0 0 16px rgb(231 111 81 / 12%), 0 0 0 32px rgb(231 111 81 / 9%), 0 0 0 48px rgb(231 111 81 / 6%); }
+      .router { top: 38%; left: 40%; width: 42px; height: 28px; }
+      .float-card { min-width: 118px; padding: 9px 11px; }
+      .float-card strong { font-size: 14px; }
+      .card-signal { top: 7%; right: 0; }
+      .card-band { bottom: 8%; left: 0; }
+      .visual-caption { right: 0; bottom: -5px; font-size: 8px; }
+      .below { padding-block: 24px 44px; }
+      .below-grid { grid-template-columns: 1fr; gap: 10px; }
+      .benefit { padding: 16px; }
+      .project-section, .how-section, .bands-section, .scope-section, .authors-section { padding-block: 56px; }
+      .project-grid, .scope-grid { grid-template-columns: 1fr; gap: 20px; }
+      .editorial-title { font-size: clamp(2.4rem, 10vw, 3.2rem); }
+      .section-heading, .authors-heading { align-items: start; flex-direction: column; gap: 12px; }
+      .steps, .bands-grid { grid-template-columns: 1fr; gap: 10px; margin-top: 22px; }
+      .step-card { min-height: 150px; padding: 19px; }
+      .step-card h3 { margin-top: 20px; }
+      .band-card { min-height: 175px; padding: 19px; }
+      .band-card h3 { margin-top: 20px; }
+      .scope-mark { min-height: 145px; }
+      .author-list { grid-template-columns: repeat(2, 1fr); margin-top: 18px; }
+      .footer .wrap { flex-direction: column; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      .motion-ready .reveal { opacity: 1; transform: none; }
     }
   </style>
 </head>
 <body>
   <header class="site-header">
     <nav class="nav wrap" aria-label="Navegación principal">
-      <a class="brand" href="#inicio" aria-label="WiFiMap, inicio">
+      <a class="brand" href="./" aria-label="WiFiMap, inicio">
         <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true">
           <path d="M5 13a20 20 0 0 1 26 0M9.5 18a13 13 0 0 1 17 0M14 23a6 6 0 0 1 8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
           <circle cx="18" cy="28" r="2" fill="currentColor"/>
@@ -329,165 +383,165 @@
         <a href="#proyecto">El proyecto</a>
         <a href="#funcionamiento">Cómo funciona</a>
         <a href="#bandas">Bandas WiFi</a>
-        <a href="#faq">FAQ</a>
-        <a class="button button-small" href="#autores">Conocer al equipo <span aria-hidden="true">↗</span></a>
+        <a href="#autores">Autores</a>
+        <a class="nav-cta" href="simulador.html">Ir al simulador <span aria-hidden="true">↗</span></a>
       </div>
     </nav>
   </header>
 
   <main>
-    <section class="hero" id="inicio">
-      <div class="hero-grid wrap">
-        <div class="hero-content">
-          <div class="status"><span class="status-dot"></span> Proyecto en desarrollo</div>
-          <p class="hero-kicker">ENTORNO INTERACTIVO &nbsp;/&nbsp; 3D</p>
-          <h1>Visualiza cómo se distribuye<br><span>la señal WiFi en cada espacio.</span></h1>
-          <p class="hero-copy">Explora una representación tridimensional de un espacio WiFi y observa, de forma conceptual, cómo cambia el alcance entre 2.4 GHz y 5 GHz.</p>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-layout wrap">
+        <div class="hero-copy">
+          <p class="eyebrow">Una nueva forma de entender tu WiFi</p>
+          <h1 id="hero-title">La señal no se ve.<br><span>Ahora puedes explorarla.</span></h1>
+          <p class="lead">Descubre cómo se distribuye la cobertura en un espacio. Configura una habitación, ubica el router y compara una estimación visual en 2.4 y 5 GHz.</p>
           <div class="hero-actions">
-            <a class="button" href="#proyecto">Conocer el proyecto <span aria-hidden="true">↓</span></a>
-            <a class="button button-secondary" href="#bandas">Explorar las bandas</a>
+            <a class="button" href="simulador.html">
+              Abrir el simulador
+              <span class="button-arrow" aria-hidden="true">→</span>
+            </a>
+            <span class="action-note">Explora el prototipo interactivo</span>
           </div>
-          <p class="hero-note">PREVISUALIZACIÓN 3D &nbsp;·&nbsp; NO ES UNA MEDICIÓN DE SEÑAL</p>
+          <div class="trust-row" aria-label="Características principales">
+            <span>Escenario configurable</span>
+            <span>Vista 3D</span>
+            <span>2.4 / 5 GHz</span>
+          </div>
+        </div>
+        <div class="visual" role="img" aria-label="Ilustración tridimensional de una habitación con router y ondas de cobertura">
+          <div class="visual-glow"></div>
+          <div class="room">
+            <div class="partition partition-one"></div>
+            <div class="partition partition-two"></div>
+            <div class="signal"></div>
+            <div class="router"></div>
+          </div>
+          <div class="float-card card-signal"><small>COBERTURA ÚTIL</small><strong>Mapa 3D</strong><em>Explora cada zona</em></div>
+          <div class="float-card card-band"><small>COMPARA BANDAS</small><strong>2.4 <span aria-hidden="true">·</span> 5 GHz</strong></div>
+          <span class="visual-caption">Una estimación visual de tu espacio</span>
         </div>
       </div>
-      <div class="hero-scene" id="hero-scene" role="img" aria-label="Habitación 3D conceptual con un router y una visualización ilustrativa de cobertura WiFi">
-        <p class="sr-only">Usa los controles para cambiar de banda, gira el modelo con el puntero y ajusta el zoom. La cobertura es ilustrativa, no es un cálculo radioeléctrico.</p>
-      </div>
-      <div class="scene-ui">
-        <div class="scene-card">
-          <span class="scene-label">PREVISUALIZACIÓN &nbsp;·&nbsp; 3D</span>
-          <span class="scene-title">Entorno conceptual</span>
-        </div>
-        <div class="band-switch" role="group" aria-label="Cambiar banda de la visualización">
-          <button type="button" data-band="2.4" aria-pressed="true">2.4 GHz</button>
-          <button type="button" data-band="5" aria-pressed="false">5 GHz</button>
-        </div>
-        <button class="scene-reset" type="button" aria-label="Restablecer vista 3D">Restablecer vista</button>
-        <span class="scene-hint">ARRASTRA PARA GIRAR &nbsp;·&nbsp; RUEDA PARA ZOOM</span>
-        <p class="scene-status" id="scene-status" role="status" aria-live="polite"></p>
-      </div>
-      <a class="scroll-cue" href="#proyecto">DESLIZA PARA EXPLORAR</a>
     </section>
 
-    <section class="section" id="proyecto">
-      <div class="intro-grid wrap">
-        <div>
-          <p class="eyebrow">01 &nbsp;/&nbsp; PROPÓSITO</p>
-          <h2 class="section-title">Una lectura más clara de la señal.</h2>
-          <p class="section-lead">La ubicación del router, las paredes y la frecuencia influyen en la cobertura. Este proyecto busca convertir esos factores en una visualización tridimensional fácil de explorar y entender, también para quienes no trabajan con redes a diario.</p>
-          <p class="hero-note">VISUALIZACIÓN 3D &nbsp;·&nbsp; ESTIMACIÓN &nbsp;·&nbsp; APRENDIZAJE</p>
-        </div>
-        <article class="scope-card">
-          <div class="scope-badge"><span class="status-dot"></span> ETAPA ACTUAL · PRESENTACIÓN</div>
-          <h3>Un espacio modelado en 3D.</h3>
-          <p>La propuesta es desarrollar un simulador web que represente el espacio en tres dimensiones y permita explorar cómo podrían distribuirse las bandas de 2.4 GHz y 5 GHz.</p>
-          <div class="scope-divider"></div>
-          <p class="eyebrow">VARIABLES PREVISTAS</p>
-          <ul class="scope-list">
-            <li>Dimensiones y distribución tridimensional</li>
-            <li>Ubicación del punto de acceso</li>
-            <li>Obstáculos y materiales de pared</li>
-            <li>Banda WiFi seleccionada</li>
-          </ul>
-          <p class="fine-print">Importante: el simulador aún no está disponible. Esta web es la plataforma de presentación del proyecto.</p>
+    <section class="below wrap" aria-label="Qué encontrarás en el simulador">
+      <div class="below-grid">
+        <article class="benefit">
+          <span class="benefit-icon" aria-hidden="true">⌖</span>
+          <div><h2>Adáptalo a tu espacio</h2><p>Define dimensiones, posición del router y obstáculos para construir un escenario propio.</p></div>
+        </article>
+        <article class="benefit">
+          <span class="benefit-icon" aria-hidden="true">◉</span>
+          <div><h2>Entiende la estimación</h2><p>Explora cortes del mapa de señal y compara indicadores entre las dos bandas WiFi.</p></div>
         </article>
       </div>
     </section>
 
-    <section class="section workflow" id="funcionamiento">
-      <div class="wrap">
-        <p class="eyebrow">02 &nbsp;/&nbsp; CÓMO FUNCIONARÁ</p>
-        <h2 class="section-title">Del espacio a una decisión más informada.</h2>
-        <p class="section-lead">El flujo previsto está pensado para ser claro: configurar el espacio, observar la visualización tridimensional y comparar las bandas.</p>
-        <div class="steps">
-          <article class="step-card"><span class="step-no">01 / MODELAR</span><h3>Define el espacio</h3><p>Configura un espacio con dimensiones, habitaciones y materiales de las paredes.</p></article>
-          <article class="step-card"><span class="step-no">02 / UBICAR</span><h3>Coloca el router</h3><p>Indica la ubicación del punto de acceso y selecciona la banda WiFi que deseas estimar.</p></article>
-          <article class="step-card"><span class="step-no">03 / EXPLORAR</span><h3>Recorre la escena</h3><p>Gira y acerca el modelo 3D para explorar visualmente las zonas del espacio.</p></article>
+    <section class="project-section" id="proyecto">
+      <div class="project-grid wrap">
+        <div>
+          <p class="section-label">01 / El proyecto</p>
+          <h2 class="editorial-title">Una forma más clara de entender la señal.</h2>
         </div>
-        <div class="future-note"><strong>DESARROLLO FUTURO</strong><span>La interacción descrita corresponde a una versión futura del simulador, no a una herramienta ya operativa.</span></div>
+        <div class="project-copy">
+          <p>WiFiMap es un proyecto de simulación web para estimar y visualizar cómo se distribuye la cobertura WiFi dentro de un espacio. Busca mostrar de forma sencilla cómo influyen las dimensiones, la ubicación del router, los obstáculos y la frecuencia.</p>
+          <p>La página principal presenta el proyecto; el simulador es una herramienta independiente donde puedes configurar un escenario y explorar el resultado.</p>
+          <p class="project-note">El simulador es un prototipo en desarrollo. Sus estimaciones son educativas y no sustituyen una medición real en el lugar.</p>
+        </div>
       </div>
     </section>
 
-    <section class="section" id="bandas">
+    <section class="how-section" id="funcionamiento">
       <div class="wrap">
-        <p class="eyebrow">03 &nbsp;/&nbsp; COMPARATIVA DE FRECUENCIAS</p>
-        <h2 class="section-title">Dos bandas, distintos compromisos.</h2>
-        <p class="section-lead">El entorno y la frecuencia influyen en la cobertura esperada. El proyecto busca ayudar a entender estas diferencias de forma visual.</p>
+        <div class="section-heading">
+          <div>
+            <p class="section-label">02 / Cómo funciona</p>
+            <h2 class="editorial-title">Del espacio a una estimación visual.</h2>
+          </div>
+          <p class="section-aside">Configura los parámetros principales y observa una representación tridimensional de la señal en distintas alturas.</p>
+        </div>
+        <div class="steps">
+          <article class="step-card">
+            <span class="step-index">01 — MODELAR</span>
+            <h3>Define el espacio</h3>
+            <p>Indica el largo, ancho y altura del lugar que deseas explorar.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-index">02 — CONFIGURAR</span>
+            <h3>Ubica router y obstáculos</h3>
+            <p>Coloca el router y agrega obstáculos con sus dimensiones y materiales.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-index">03 — EXPLORAR</span>
+            <h3>Observa la cobertura</h3>
+            <p>Calcula el mapa estimado y alterna entre las bandas de 2.4 y 5 GHz.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="bands-section" id="bandas">
+      <div class="wrap">
+        <p class="section-label">03 / Bandas WiFi</p>
+        <h2 class="editorial-title">Dos frecuencias, distintas características.</h2>
         <div class="bands-grid">
           <article class="band-card">
-            <span class="band-label">BANDA &nbsp; / &nbsp; 2.4 GHz</span>
-            <h3>Llega más lejos. Se adapta mejor a los obstáculos.</h3>
-            <p>Suele ofrecer mayor alcance y mejor penetración en algunos materiales. Puede ser una opción útil cuando la distancia importa más que la velocidad máxima.</p>
-            <p class="band-traits">COBERTURA AMPLIA &nbsp;·&nbsp; MAYOR CONGESTIÓN</p>
+            <span class="band-label">2.4 GHz</span>
+            <h3>Mayor alcance potencial</h3>
+            <p>Suele cubrir distancias mayores y puede atravesar algunos obstáculos con menos atenuación; también puede estar más congestionada.</p>
           </article>
-          <article class="band-card five">
-            <span class="band-label">BANDA &nbsp; / &nbsp; 5 GHz</span>
-            <h3>Más capacidad en distancias cortas.</h3>
-            <p>Puede ofrecer mayor velocidad y menos congestión, aunque la señal suele atenuarse más al atravesar paredes y al alejarse del router.</p>
-            <p class="band-traits">MAYOR VELOCIDAD &nbsp;·&nbsp; MENOR ALCANCE</p>
+          <article class="band-card">
+            <span class="band-label">5 GHz</span>
+            <h3>Más capacidad a corta distancia</h3>
+            <p>Puede ofrecer mayor velocidad y menos congestión, aunque la señal suele atenuarse más con la distancia y las paredes.</p>
           </article>
-        </div>
-        <p class="disclaimer">El comportamiento real también depende del router, los materiales, las interferencias y los dispositivos conectados.</p>
-      </div>
-    </section>
-
-    <section class="section faq" id="faq">
-      <div class="wrap">
-        <p class="eyebrow">04 &nbsp;/&nbsp; PREGUNTAS FRECUENTES</p>
-        <h2 class="section-title">Lo esencial, sin letra pequeña.</h2>
-        <p class="section-lead">Qué esperar del proyecto y cómo interpretar sus resultados.</p>
-        <div class="faq-list">
-          <details class="faq-item" open>
-            <summary>¿El simulador ya está disponible?</summary>
-            <p class="faq-answer">No todavía. El simulador es un desarrollo futuro; actualmente, esta web es la plataforma de presentación del proyecto y de su funcionamiento previsto.</p>
-          </details>
-          <details class="faq-item">
-            <summary>¿Qué información se podrá configurar?</summary>
-            <p class="faq-answer">La propuesta contempla las dimensiones y la distribución del espacio, la ubicación del punto de acceso, los obstáculos y materiales, y la banda WiFi que se desea estimar.</p>
-          </details>
-          <details class="faq-item">
-            <summary>¿Cuál es la diferencia entre 2.4 GHz y 5 GHz?</summary>
-            <p class="faq-answer">En general, 2.4 GHz suele ofrecer mayor alcance y penetración, mientras que 5 GHz puede ofrecer más velocidad en distancias menores. El resultado depende del entorno y los equipos.</p>
-          </details>
-          <details class="faq-item">
-            <summary>¿La escena 3D reemplazará una medición real?</summary>
-            <p class="faq-answer">No. La escena actual es una representación conceptual para explorar el proyecto; no calcula la propagación real ni sustituye un estudio radioeléctrico o una medición profesional en el lugar.</p>
-          </details>
         </div>
       </div>
     </section>
 
-    <section class="section" id="autores">
-      <div class="wrap">
-        <p class="eyebrow">05 &nbsp;/&nbsp; CRÉDITOS</p>
-        <h2 class="section-title">Un equipo detrás de la propuesta.</h2>
-        <p class="section-lead">Autores y desarrolladores de la plataforma de presentación.</p>
-        <div class="author-list">
-          <p class="author-label">Autores del proyecto</p>
-          <ul class="author-names">
-            <li>Sebastian Minorta</li>
-            <li>Sofia Madriz</li>
-            <li>Juan Lozano</li>
-            <li>Andres Perozo</li>
-            <li>Abraham Martinez</li>
-            <li>Juan Manzanero</li>
-          </ul>
+    <section class="scope-section">
+      <div class="scope-grid wrap">
+        <div class="scope-mark" aria-hidden="true">
+          <svg viewBox="0 0 96 96" fill="none">
+            <path d="M15 34a49 49 0 0 1 66 0M25 46a34 34 0 0 1 46 0M36 58a18 18 0 0 1 24 0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="48" cy="70" r="4" fill="currentColor"/>
+          </svg>
         </div>
-        <footer class="site-footer">
-          <span class="footer-brand">WIFIMAP &nbsp;/&nbsp; ENTORNO 3D CONCEPTUAL</span>
-          <span>Proyecto de estimación de cobertura WiFi · 2.4 GHz y 5 GHz</span>
-        </footer>
+        <div class="scope-copy">
+          <p class="section-label">04 / Alcance actual</p>
+          <h2 class="editorial-title">Un prototipo para explorar, no una medición profesional.</h2>
+          <p>El motor usa una estimación de pérdida en espacio libre y atenuación orientativa por obstáculos. No modela reflexión, difracción, multipath ni interferencia ambiental, y sus valores aún no están validados experimentalmente. La web pública es la presentación del proyecto; para calcular resultados se necesita la API local.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="authors-section" id="autores">
+      <div class="wrap">
+        <div class="authors-heading">
+          <div>
+            <p class="section-label">05 / Autores</p>
+            <h2 class="editorial-title">El equipo detrás de WiFiMap.</h2>
+          </div>
+          <p>Autores y desarrolladores de la página de presentación del proyecto.</p>
+        </div>
+        <ul class="author-list">
+          <li>Sebastian Minorta</li>
+          <li>Sofia Madriz</li>
+          <li>Juan Lozano</li>
+          <li>Andres Perozo</li>
+          <li>Abraham Martinez</li>
+          <li>Juan Manzanero</li>
+        </ul>
       </div>
     </section>
   </main>
 
+  <footer class="footer">
+    <div class="footer-row wrap"><span>WIFIMAP &nbsp;/&nbsp; PROYECTO EN DESARROLLO</span><span>Estimación educativa; no sustituye una medición en sitio.</span></div>
+  </footer>
   <script>
     const menuButton = document.querySelector(".menu-toggle");
     const navLinks = document.querySelector(".nav-links");
-    const bandButtons = document.querySelectorAll(".band-switch button");
-    const resetButton = document.querySelector(".scene-reset");
-    const sceneElement = document.querySelector("#hero-scene");
-    const sceneStatus = document.querySelector("#scene-status");
 
     menuButton.addEventListener("click", () => {
       const isOpen = navLinks.classList.toggle("open");
@@ -503,262 +557,26 @@
       }
     });
 
-    async function initializeScene() {
-      try {
-        const THREE = await import("three");
-        const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-        const compactScene = window.matchMedia("(max-width: 680px)").matches;
-        const initialTargetY = compactScene ? -0.8 : 1.2;
-        camera.position.set(compactScene ? 11 : 9.5, compactScene ? 10 : 9, compactScene ? 14 : 12);
-        camera.lookAt(0, initialTargetY, 0);
-
-        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.15;
-        renderer.domElement.tabIndex = 0;
-        renderer.domElement.setAttribute("aria-label", "Escena 3D interactiva. Usa las flechas para girar y la rueda para acercar o alejar.");
-        sceneElement.append(renderer.domElement);
-
-        scene.add(new THREE.HemisphereLight(0xffead5, 0x241816, 2.1));
-        const keyLight = new THREE.DirectionalLight(0xffd5b0, 2.7);
-        keyLight.position.set(-4, 9, 5);
-        scene.add(keyLight);
-        const fillLight = new THREE.PointLight(0xe76f51, 35, 18);
-        fillLight.position.set(1, 4, -2);
-        scene.add(fillLight);
-
-        const model = new THREE.Group();
-        model.position.x = 1.6;
-        scene.add(model);
-
-        const floor = new THREE.Mesh(
-          new THREE.PlaneGeometry(8, 6),
-          new THREE.MeshStandardMaterial({ color: 0x514138, roughness: 0.88, metalness: 0.04 })
-        );
-        floor.rotation.x = -Math.PI / 2;
-        floor.position.y = -0.015;
-        model.add(floor);
-
-        const grid = new THREE.GridHelper(8, 16, 0xd6c2a1, 0x9b8067);
-        grid.position.y = 0.005;
-        grid.material.transparent = true;
-        grid.material.opacity = 0.22;
-        model.add(grid);
-
-        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x9c7965, roughness: 0.78, metalness: 0.02 });
-        const wallHeight = 2.2;
-        function addWall(x1, z1, x2, z2) {
-          const dx = x2 - x1;
-          const dz = z2 - z1;
-          const length = Math.hypot(dx, dz);
-          const wall = new THREE.Mesh(new THREE.BoxGeometry(length, wallHeight, 0.12), wallMaterial);
-          wall.position.set((x1 + x2) / 2, wallHeight / 2, (z1 + z2) / 2);
-          wall.rotation.y = -Math.atan2(dz, dx);
-          model.add(wall);
-        }
-
-        addWall(-4, -3, 4, -3);
-        addWall(-4, -3, -4, 3);
-        addWall(4, -3, 4, 3);
-        addWall(-4, 3, -1.6, 3);
-        addWall(1.6, 3, 4, 3);
-        addWall(-0.8, -3, -0.8, -0.5);
-        addWall(-0.8, 0.5, -0.8, 2.2);
-        addWall(-0.8, 0.5, 1.2, 0.5);
-        addWall(2.1, 0.5, 4, 0.5);
-
-        function addRoomLabel(text, x, z) {
-          const canvas = document.createElement("canvas");
-          canvas.width = 512;
-          canvas.height = 128;
-          const context = canvas.getContext("2d");
-          context.fillStyle = "rgba(25, 20, 18, 0.68)";
-          context.beginPath();
-          context.roundRect(8, 8, 496, 112, 22);
-          context.fill();
-          context.fillStyle = "#f7f1e8";
-          context.font = "600 34px Segoe UI, sans-serif";
-          context.textAlign = "center";
-          context.textBaseline = "middle";
-          context.fillText(text, 256, 64);
-          const texture = new THREE.CanvasTexture(canvas);
-          texture.colorSpace = THREE.SRGBColorSpace;
-          const label = new THREE.Mesh(
-            new THREE.PlaneGeometry(2.1, 0.52),
-            new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false })
-          );
-          label.rotation.x = -Math.PI / 2;
-          label.position.set(x, 0.018, z);
-          model.add(label);
-        }
-        addRoomLabel("SALA", -2.5, 1.5);
-        addRoomLabel("ESTUDIO", 2.45, 1.65);
-        addRoomLabel("HABITACIÓN", 2.4, -1.5);
-
-        const routerX = -0.05;
-        const routerZ = -0.35;
-        const router = new THREE.Group();
-        router.position.set(routerX, 0, routerZ);
-        model.add(router);
-        const routerBody = new THREE.Mesh(
-          new THREE.BoxGeometry(0.7, 0.16, 0.42),
-          new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.38, metalness: 0.16 })
-        );
-        routerBody.position.y = 0.14;
-        router.add(routerBody);
-        const antennaMaterial = new THREE.MeshStandardMaterial({ color: 0xf7f1e8, roughness: 0.35, metalness: 0.22 });
-        [-0.24, 0.24].forEach((x) => {
-          const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.56, 8), antennaMaterial);
-          antenna.position.set(x, 0.49, -0.08);
-          antenna.rotation.z = x < 0 ? 0.12 : -0.12;
-          router.add(antenna);
-        });
-        const led = new THREE.Mesh(
-          new THREE.SphereGeometry(0.035, 12, 8),
-          new THREE.MeshBasicMaterial({ color: 0xffddaa })
-        );
-        led.position.set(0, 0.17, 0.22);
-        router.add(led);
-
-        const coverageMaterial = new THREE.ShaderMaterial({
-          transparent: true,
-          depthWrite: false,
-          uniforms: { uColor: { value: new THREE.Color(0xe76f51) }, uTime: { value: 0 } },
-          vertexShader: `
-            varying vec2 vUv;
-            void main() {
-              vUv = uv;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches && "IntersectionObserver" in window) {
+      const revealTargets = document.querySelectorAll(
+        ".below-grid, .project-grid, .section-heading, .steps .step-card, .bands-section > .wrap > .section-label, .bands-section > .wrap > .editorial-title, .bands-grid .band-card, .scope-grid, .authors-heading, .author-list"
+      );
+      if (revealTargets.length) {
+        document.documentElement.classList.add("motion-ready");
+        const observer = new IntersectionObserver((entries, currentObserver) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              currentObserver.unobserve(entry.target);
             }
-          `,
-          fragmentShader: `
-            uniform vec3 uColor;
-            uniform float uTime;
-            varying vec2 vUv;
-            void main() {
-              float distanceFromCenter = length((vUv - 0.5) * 2.0);
-              float edge = 1.0 - smoothstep(0.62, 1.0, distanceFromCenter);
-              float pulse = 0.9 + 0.1 * sin(uTime * 1.5);
-              float alpha = exp(-distanceFromCenter * 2.0) * edge * 0.58 * pulse;
-              if (alpha < 0.015) discard;
-              gl_FragColor = vec4(uColor, alpha);
-              #include <tonemapping_fragment>
-              #include <colorspace_fragment>
-            }
-          `
-        });
-        const coverage = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), coverageMaterial);
-        coverage.rotation.x = -Math.PI / 2;
-        coverage.position.set(routerX, 0.025, routerZ);
-        model.add(coverage);
-
-        const rippleMaterial = new THREE.MeshBasicMaterial({
-          color: 0xe76f51,
-          transparent: true,
-          opacity: 0.32,
-          depthWrite: false
-        });
-        const ripples = [0.72, 1.28, 1.84].map((radius) => {
-          const ripple = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.012, 6, 80), rippleMaterial.clone());
-          ripple.rotation.x = Math.PI / 2;
-          ripple.position.set(routerX, 0.045, routerZ);
-          model.add(ripple);
-          return ripple;
-        });
-
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.target.set(0, compactScene ? -0.8 : 0.8, 0);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.055;
-        controls.minDistance = 7;
-        controls.maxDistance = 19;
-        controls.maxPolarAngle = Math.PI / 2.05;
-        controls.update();
-        controls.saveState();
-
-        let selectedBand = "2.4";
-        function setBand(band) {
-          selectedBand = band;
-          const is24 = band === "2.4";
-          const color = is24 ? 0xe76f51 : 0xd6c2a1;
-          coverageMaterial.uniforms.uColor.value.setHex(color);
-          rippleMaterial.color.setHex(color);
-          ripples.forEach((ripple) => ripple.material.color.setHex(color));
-          const radius = is24 ? 4.7 : 3.35;
-          coverage.scale.set(radius * 2, radius * 2, 1);
-          bandButtons.forEach((button) => {
-            button.setAttribute("aria-pressed", String(button.dataset.band === band));
           });
-        }
-        bandButtons.forEach((button) => {
-          button.addEventListener("click", () => setBand(button.dataset.band));
+        }, { threshold: 0.16 });
+        revealTargets.forEach((target) => {
+          target.classList.add("reveal");
+          observer.observe(target);
         });
-        resetButton.addEventListener("click", () => controls.reset());
-        setBand(selectedBand);
-
-        const resizeObserver = new ResizeObserver(() => {
-          const width = sceneElement.clientWidth;
-          const height = sceneElement.clientHeight;
-          if (!width || !height) return;
-          camera.aspect = width / height;
-          camera.updateProjectionMatrix();
-          renderer.setSize(width, height, false);
-          renderer.render(scene, camera);
-        });
-        resizeObserver.observe(sceneElement);
-
-        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-        let animationFrame;
-        function renderFrame(time) {
-          coverageMaterial.uniforms.uTime.value = time * 0.001;
-          ripples.forEach((ripple, index) => {
-            const phase = (time * 0.00035 + index / ripples.length) % 1;
-            const scale = 0.8 + phase * (selectedBand === "2.4" ? 1.9 : 1.35);
-            ripple.scale.setScalar(scale);
-            ripple.material.opacity = 0.34 * (1 - phase);
-          });
-          controls.update();
-          renderer.render(scene, camera);
-          animationFrame = window.requestAnimationFrame(renderFrame);
-        }
-        function updateMotion() {
-          if (animationFrame) window.cancelAnimationFrame(animationFrame);
-          animationFrame = 0;
-          if (reducedMotion.matches) {
-            ripples.forEach((ripple, index) => {
-              ripple.scale.setScalar(0.9 + index * 0.28);
-              ripple.material.opacity = 0.22;
-            });
-            renderer.render(scene, camera);
-          } else {
-            animationFrame = window.requestAnimationFrame(renderFrame);
-          }
-        }
-        reducedMotion.addEventListener("change", updateMotion);
-        updateMotion();
-        sceneStatus.textContent = "";
-        window.addEventListener("pagehide", () => {
-          if (animationFrame) window.cancelAnimationFrame(animationFrame);
-          resizeObserver.disconnect();
-          controls.dispose();
-          renderer.dispose();
-        }, { once: true });
-      } catch (error) {
-        console.error("No se pudo iniciar la escena 3D.", error);
-        document.querySelector(".hero").classList.add("no-webgl");
-        sceneStatus.textContent = "No se pudo cargar la escena 3D. Comprueba tu conexión y que el navegador permita WebGL.";
-        bandButtons.forEach((button) => {
-          button.disabled = true;
-        });
-        resetButton.disabled = true;
       }
     }
-
-    initializeScene();
   </script>
 </body>
 </html>

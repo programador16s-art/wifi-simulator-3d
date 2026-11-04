@@ -1,0 +1,8 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.34,<1
+numpy>=2.0,<3
+scipy>=1.14,<2
+sympy>=1.13,<2
+mysql-connector-python>=9,<10
+pytest>=8,<9
+httpx>=0.27,<1

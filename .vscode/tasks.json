@@ -1,0 +1,22 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install WiFi simulator dependencies",
+      "type": "shell",
+      "command": "python -m pip install -r backend\\requirements.txt",
+      "inAgents": true,
+      "runOptions": {
+        "runOn": "worktreeCreated"
+      }
+    },
+    {
+      "label": "Run WiFi simulator",
+      "type": "shell",
+      "command": "python -m uvicorn backend.app.main:app --reload",
+      "inAgents": true,
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}
