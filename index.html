@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#211b19">
+  <meta name="description" content="Explora la propuesta de WiFiMap en una escena 3D interactiva y conoce cómo se estima la cobertura en las bandas de 2.4 GHz y 5 GHz.">
+  <title>WiFiMap — Visualiza tu WiFi</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #211b19;
+      --surface: #2b2421;
+      --surface-raised: #352b26;
+      --coral: #e76f51;
+      --coral-light: #f08a70;
+      --sand: #d6c2a1;
+      --paper: #f7f1e8;
+      --muted: #bbafa2;
+      --line: #493b34;
+      --deep: #191412;
+      --radius: 22px;
+      --content: 1184px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--paper);
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; }
+    .wrap { width: min(var(--content), calc(100% - 48px)); margin-inline: auto; }
+    .eyebrow {
+      margin: 0;
+      color: var(--coral-light);
+      font: 600 11px/1.4 "Cascadia Code", Consolas, monospace;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .section-title {
+      max-width: 760px;
+      margin: 14px 0 0;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      letter-spacing: -.055em;
+      line-height: 1.08;
+      font-weight: 650;
+    }
+    .section-lead { max-width: 680px; margin: 16px 0 0; color: var(--muted); font-size: 16px; }
+    .section { padding-block: 104px; }
+
+    .site-header {
+      position: absolute;
+      z-index: 20;
+      top: 0;
+      right: 0;
+      left: 0;
+      background: linear-gradient(180deg, rgb(25 20 18 / 52%), transparent);
+    }
+    .nav {
+      width: min(100% - 80px, 1440px);
+      min-height: 88px;
+      display: flex;
+      margin-inline: auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 30px;
+    }
+    .brand { display: inline-flex; align-items: center; gap: 11px; flex-shrink: 0; }
+    .brand-mark { width: 34px; height: 34px; color: var(--coral); }
+    .brand-copy { display: grid; line-height: 1.15; }
+    .brand-name { font-size: 15px; font-weight: 750; letter-spacing: .04em; }
+    .brand-sub { margin-top: 4px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .nav-links { display: flex; align-items: center; gap: clamp(17px, 2.4vw, 34px); }
+    .nav-links a:not(.button) { color: var(--paper); font-size: 13px; transition: color .2s; }
+    .nav-links a:not(.button):hover { color: var(--paper); }
+    .menu-toggle {
+      display: none;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      color: var(--paper);
+      background: var(--surface);
+      cursor: pointer;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 0 19px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      background: var(--coral);
+      color: var(--deep);
+      font-size: 13px;
+      font-weight: 700;
+      transition: transform .2s, background .2s, border-color .2s;
+    }
+    .button:hover { transform: translateY(-2px); background: var(--coral-light); }
+    .button-secondary { border-color: var(--line); background: var(--surface); color: var(--paper); }
+    .button-secondary:hover { border-color: var(--sand); background: var(--surface-raised); }
+    .button-small { min-height: 40px; padding-inline: 15px; font-size: 12px; }
+    .sr-only { position: absolute; overflow: hidden; width: 1px; height: 1px; padding: 0; border: 0; margin: -1px; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      min-height: 100vh;
+      min-height: 100svh;
+      isolation: isolate;
+      background: var(--deep);
+    }
+    .hero::before {
+      position: absolute;
+      z-index: 0;
+      top: 2%;
+      right: 8%;
+      width: min(70vw, 940px);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgb(231 111 81 / 13%), transparent 68%);
+      content: "";
+      pointer-events: none;
+    }
+    .hero::after {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      background: linear-gradient(90deg, var(--deep) 0%, rgb(25 20 18 / 96%) 27%, rgb(25 20 18 / 62%) 52%, rgb(25 20 18 / 12%) 100%), linear-gradient(0deg, rgb(25 20 18 / 68%), transparent 32%);
+      content: "";
+      pointer-events: none;
+    }
+    .hero-grid {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      width: min(100%, 1440px);
+      min-height: 100vh;
+      min-height: 100svh;
+      margin-inline: auto;
+      align-items: center;
+      padding: 120px 48px 84px;
+      pointer-events: none;
+    }
+    .hero-content { max-width: 560px; animation: hero-rise .85s both; pointer-events: auto; }
+    .hero-scene { position: absolute; z-index: 1; inset: 0; overflow: hidden; }
+    .hero-scene canvas { display: block; width: 100%; height: 100%; }
+    .status {
+      display: inline-flex;
+      width: fit-content;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 12px;
+      border: 1px solid rgb(214 194 161 / 20%);
+      border-radius: 99px;
+      background: var(--surface);
+      color: var(--sand);
+      font: 10px "Cascadia Code", Consolas, monospace;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 12px rgb(231 111 81 / 65%); }
+    .hero-kicker { margin: 22px 0 0; color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    h1 { max-width: 610px; margin: 13px 0 0; font-size: clamp(3.5rem, 6.4vw, 5.6rem); letter-spacing: -.075em; line-height: .99; font-weight: 680; }
+    h1 span { color: var(--sand); }
+    .hero-copy { max-width: 540px; margin: 23px 0 0; color: var(--muted); font-size: 17px; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .hero-note { margin: 19px 0 0; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .055em; }
+
+    .scene-ui { position: absolute; z-index: 4; top: 116px; right: max(38px, calc((100% - 1344px) / 2)); display: grid; justify-items: end; gap: 10px; pointer-events: none; }
+    .scene-card { display: grid; gap: 3px; padding: 11px 14px; border: 1px solid rgb(214 194 161 / 22%); border-radius: 13px; background: rgb(25 20 18 / 76%); backdrop-filter: blur(12px); }
+    .scene-label { color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .scene-title { color: var(--paper); font-size: 12px; font-weight: 600; }
+    .band-switch { display: flex; gap: 4px; padding: 5px; border: 1px solid rgb(214 194 161 / 24%); border-radius: 10px; background: rgb(25 20 18 / 82%); backdrop-filter: blur(12px); pointer-events: auto; }
+    .band-switch button, .scene-reset { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 10px "Cascadia Code", Consolas, monospace; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+    .band-switch button[aria-pressed="true"] { background: var(--coral); color: var(--deep); }
+    .scene-reset { border: 1px solid rgb(214 194 161 / 24%); background: rgb(25 20 18 / 78%); color: var(--paper); backdrop-filter: blur(12px); pointer-events: auto; }
+    .scene-reset:hover { border-color: var(--sand); }
+    .scene-reset:disabled, .band-switch button:disabled { cursor: not-allowed; opacity: .55; }
+    .scene-hint { color: var(--paper); text-shadow: 0 1px 8px var(--deep); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .04em; }
+    .scene-status { max-width: 320px; color: var(--muted); font-size: 11px; text-align: right; }
+    .scene-status:empty { display: none; }
+    .no-webgl .scene-status { padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--paper); }
+    .scroll-cue { position: absolute; z-index: 4; bottom: 28px; left: max(48px, calc((100% - 1344px) / 2)); display: inline-flex; align-items: center; gap: 11px; color: var(--muted); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+    .scroll-cue::before { width: 27px; height: 1px; background: var(--coral); content: ""; }
+    @keyframes hero-rise {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .intro-grid { display: grid; grid-template-columns: .9fr 1.1fr; align-items: center; gap: 78px; }
+    .scope-card { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+    .scope-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--surface-raised); color: var(--sand); font: 9px "Cascadia Code", Consolas, monospace; }
+    .scope-card h3 { margin: 17px 0 0; font-size: 22px; letter-spacing: -.035em; }
+    .scope-card > p { margin: 10px 0 0; color: var(--muted); font-size: 14px; }
+    .scope-divider { height: 1px; margin: 20px 0; background: var(--line); }
+    .scope-list { display: grid; gap: 11px; margin: 12px 0 0; padding: 0; list-style: none; }
+    .scope-list li { display: flex; align-items: flex-start; gap: 10px; color: var(--paper); font-size: 13px; }
+    .scope-list li::before { width: 6px; height: 6px; margin-top: 8px; border-radius: 50%; background: var(--coral); content: ""; flex: 0 0 auto; }
+    .fine-print { margin-top: 20px !important; font-size: 12px !important; }
+    .workflow { background: #1d1715; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 37px; }
+    .step-card { min-height: 210px; padding: 25px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); }
+    .step-no { color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+    .step-card h3 { margin: 18px 0 0; font-size: 20px; letter-spacing: -.035em; }
+    .step-card p { margin: 9px 0 0; color: var(--muted); font-size: 14px; }
+    .future-note { display: flex; align-items: center; gap: 13px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted); font-size: 13px; }
+    .future-note strong { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
+
+    .bands-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 36px; }
+    .band-card { position: relative; overflow: hidden; min-height: 270px; padding: 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+    .band-card::after { position: absolute; right: -55px; bottom: -100px; width: 220px; height: 220px; border: 1px solid rgb(231 111 81 / 18%); border-radius: 50%; box-shadow: 0 0 0 28px rgb(231 111 81 / 3%), 0 0 0 58px rgb(231 111 81 / 2%); content: ""; }
+    .band-card.five::after { border-color: rgb(214 194 161 / 18%); box-shadow: 0 0 0 28px rgb(214 194 161 / 3%), 0 0 0 58px rgb(214 194 161 / 2%); }
+    .band-label { color: var(--coral-light); font: 11px "Cascadia Code", Consolas, monospace; letter-spacing: .11em; }
+    .band-card.five .band-label { color: var(--sand); }
+    .band-card h3 { position: relative; z-index: 1; max-width: 460px; margin: 14px 0 0; font-size: clamp(1.45rem, 2.5vw, 2rem); line-height: 1.18; letter-spacing: -.04em; }
+    .band-card p { position: relative; z-index: 1; max-width: 470px; margin: 13px 0 0; color: var(--muted); font-size: 14px; }
+    .band-traits { position: relative; z-index: 1; margin: 19px 0 0; color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+    .band-card.five .band-traits { color: var(--sand); }
+    .disclaimer { margin: 18px 0 0; color: var(--muted); font-size: 12px; }
+
+    .faq { background: #1d1715; }
+    .faq-list { display: grid; gap: 10px; margin-top: 34px; }
+    .faq-item { overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .faq-item summary { display: flex; min-height: 65px; align-items: center; justify-content: space-between; gap: 20px; padding: 17px 20px; cursor: pointer; font-size: 15px; font-weight: 600; list-style: none; }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--coral-light); content: "+"; font-size: 17px; font-weight: 400; flex: 0 0 auto; }
+    .faq-item[open] summary::after { content: "−"; }
+    .faq-answer { max-width: 900px; margin: -2px 20px 20px; color: var(--muted); font-size: 14px; }
+
+    .author-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin-top: 14px; padding: 18px 22px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .author-label { margin: 0; color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .author-names { display: flex; flex: 1; flex-wrap: wrap; gap: 6px 16px; margin: 0; padding: 0; list-style: none; }
+    .author-names li { color: var(--paper); font-size: 12px; font-weight: 550; white-space: nowrap; }
+    .site-footer { display: flex; justify-content: space-between; gap: 24px; margin-top: 34px; padding: 21px 0 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .footer-brand { color: var(--coral-light); font: 10px "Cascadia Code", Consolas, monospace; letter-spacing: .08em; }
+
+    @media (max-width: 900px) {
+      .hero-grid { padding-inline: 36px; }
+      .hero-content { max-width: 720px; }
+      .intro-grid { grid-template-columns: 1fr 1fr; gap: 35px; }
+      .nav-links { gap: 16px; }
+      .nav-links a:not(.button) { font-size: 12px; }
+      .scroll-cue { left: 36px; }
+    }
+    @media (max-width: 680px) {
+      html { scroll-padding-top: 72px; }
+      .wrap { width: min(100% - 36px, var(--content)); }
+      .section { padding-block: 76px; }
+      .nav { width: calc(100% - 36px); min-height: 68px; }
+      .menu-toggle { display: inline-grid; place-items: center; }
+      .nav-links {
+        position: absolute;
+        top: calc(100% + 1px);
+        right: 0;
+        left: 0;
+        display: none;
+        align-items: stretch;
+        gap: 0;
+        padding: 10px 18px 18px;
+        border: 1px solid var(--line);
+        border-radius: 0 0 16px 16px;
+        background: rgb(25 20 18 / 96%);
+        backdrop-filter: blur(16px);
+      }
+      .nav-links.open { display: flex; flex-direction: column; }
+      .nav-links a:not(.button) { padding: 12px 4px; font-size: 14px; }
+      .nav-links .button { margin-top: 9px; }
+      .hero-grid { min-height: max(100svh, 790px); align-items: flex-end; padding: 43svh 20px 60px; }
+      .hero::after { background: linear-gradient(0deg, var(--deep) 2%, rgb(25 20 18 / 97%) 46%, rgb(25 20 18 / 35%) 86%, rgb(25 20 18 / 20%) 100%); }
+      .hero::before { top: 6%; right: -28%; width: 110vw; }
+      .hero-kicker { margin-top: 13px; font-size: 9px; }
+      h1 { margin-top: 9px; font-size: clamp(2.5rem, 9.5vw, 2.9rem); }
+      .hero-copy { margin-top: 13px; font-size: 14px; }
+      .hero-actions { margin-top: 16px; }
+      .hero-actions .button-secondary { display: none; }
+      .hero-note { margin-top: 11px; font-size: 8px; }
+      .scene-ui { top: 88px; right: 18px; gap: 7px; }
+      .scene-card { padding: 9px 11px; }
+      .scene-hint { max-width: 190px; text-align: right; }
+      .scroll-cue { bottom: 22px; left: 20px; }
+      .intro-grid { grid-template-columns: 1fr; gap: 26px; }
+      .scope-card { padding: 22px; }
+      .steps, .bands-grid { grid-template-columns: 1fr; }
+      .step-card { min-height: 0; }
+      .band-card { min-height: 245px; padding: 23px; }
+      .author-list { align-items: flex-start; flex-direction: column; gap: 9px; padding: 15px 16px; }
+      .author-names { gap: 7px 12px; }
+      .author-names li { font-size: 11px; }
+      .site-footer { flex-direction: column; gap: 10px; }
+      .future-note { align-items: flex-start; flex-direction: column; gap: 7px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav wrap" aria-label="Navegación principal">
+      <a class="brand" href="#inicio" aria-label="WiFiMap, inicio">
+        <svg class="brand-mark" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+          <path d="M5 13a20 20 0 0 1 26 0M9.5 18a13 13 0 0 1 17 0M14 23a6 6 0 0 1 8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="18" cy="28" r="2" fill="currentColor"/>
+        </svg>
+        <span class="brand-copy"><span class="brand-name">WIFIMAP</span><span class="brand-sub">EXPLORACIÓN 3D</span></span>
+      </a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="Abrir menú">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      </button>
+      <div class="nav-links" id="nav-links">
+        <a href="#proyecto">El proyecto</a>
+        <a href="#funcionamiento">Cómo funciona</a>
+        <a href="#bandas">Bandas WiFi</a>
+        <a href="#faq">FAQ</a>
+        <a class="button button-small" href="#autores">Conocer al equipo <span aria-hidden="true">↗</span></a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <div class="hero-grid wrap">
+        <div class="hero-content">
+          <div class="status"><span class="status-dot"></span> Proyecto en desarrollo</div>
+          <p class="hero-kicker">ENTORNO INTERACTIVO &nbsp;/&nbsp; 3D</p>
+          <h1>Visualiza cómo se distribuye<br><span>la señal WiFi en cada espacio.</span></h1>
+          <p class="hero-copy">Explora una representación tridimensional de un espacio WiFi y observa, de forma conceptual, cómo cambia el alcance entre 2.4 GHz y 5 GHz.</p>
+          <div class="hero-actions">
+            <a class="button" href="#proyecto">Conocer el proyecto <span aria-hidden="true">↓</span></a>
+            <a class="button button-secondary" href="#bandas">Explorar las bandas</a>
+          </div>
+          <p class="hero-note">PREVISUALIZACIÓN 3D &nbsp;·&nbsp; NO ES UNA MEDICIÓN DE SEÑAL</p>
+        </div>
+      </div>
+      <div class="hero-scene" id="hero-scene" role="img" aria-label="Habitación 3D conceptual con un router y una visualización ilustrativa de cobertura WiFi">
+        <p class="sr-only">Usa los controles para cambiar de banda, gira el modelo con el puntero y ajusta el zoom. La cobertura es ilustrativa, no es un cálculo radioeléctrico.</p>
+      </div>
+      <div class="scene-ui">
+        <div class="scene-card">
+          <span class="scene-label">PREVISUALIZACIÓN &nbsp;·&nbsp; 3D</span>
+          <span class="scene-title">Entorno conceptual</span>
+        </div>
+        <div class="band-switch" role="group" aria-label="Cambiar banda de la visualización">
+          <button type="button" data-band="2.4" aria-pressed="true">2.4 GHz</button>
+          <button type="button" data-band="5" aria-pressed="false">5 GHz</button>
+        </div>
+        <button class="scene-reset" type="button" aria-label="Restablecer vista 3D">Restablecer vista</button>
+        <span class="scene-hint">ARRASTRA PARA GIRAR &nbsp;·&nbsp; RUEDA PARA ZOOM</span>
+        <p class="scene-status" id="scene-status" role="status" aria-live="polite"></p>
+      </div>
+      <a class="scroll-cue" href="#proyecto">DESLIZA PARA EXPLORAR</a>
+    </section>
+
+    <section class="section" id="proyecto">
+      <div class="intro-grid wrap">
+        <div>
+          <p class="eyebrow">01 &nbsp;/&nbsp; PROPÓSITO</p>
+          <h2 class="section-title">Una lectura más clara de la señal.</h2>
+          <p class="section-lead">La ubicación del router, las paredes y la frecuencia influyen en la cobertura. Este proyecto busca convertir esos factores en una visualización tridimensional fácil de explorar y entender, también para quienes no trabajan con redes a diario.</p>
+          <p class="hero-note">VISUALIZACIÓN 3D &nbsp;·&nbsp; ESTIMACIÓN &nbsp;·&nbsp; APRENDIZAJE</p>
+        </div>
+        <article class="scope-card">
+          <div class="scope-badge"><span class="status-dot"></span> ETAPA ACTUAL · PRESENTACIÓN</div>
+          <h3>Un espacio modelado en 3D.</h3>
+          <p>La propuesta es desarrollar un simulador web que represente el espacio en tres dimensiones y permita explorar cómo podrían distribuirse las bandas de 2.4 GHz y 5 GHz.</p>
+          <div class="scope-divider"></div>
+          <p class="eyebrow">VARIABLES PREVISTAS</p>
+          <ul class="scope-list">
+            <li>Dimensiones y distribución tridimensional</li>
+            <li>Ubicación del punto de acceso</li>
+            <li>Obstáculos y materiales de pared</li>
+            <li>Banda WiFi seleccionada</li>
+          </ul>
+          <p class="fine-print">Importante: el simulador aún no está disponible. Esta web es la plataforma de presentación del proyecto.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section workflow" id="funcionamiento">
+      <div class="wrap">
+        <p class="eyebrow">02 &nbsp;/&nbsp; CÓMO FUNCIONARÁ</p>
+        <h2 class="section-title">Del espacio a una decisión más informada.</h2>
+        <p class="section-lead">El flujo previsto está pensado para ser claro: configurar el espacio, observar la visualización tridimensional y comparar las bandas.</p>
+        <div class="steps">
+          <article class="step-card"><span class="step-no">01 / MODELAR</span><h3>Define el espacio</h3><p>Configura un espacio con dimensiones, habitaciones y materiales de las paredes.</p></article>
+          <article class="step-card"><span class="step-no">02 / UBICAR</span><h3>Coloca el router</h3><p>Indica la ubicación del punto de acceso y selecciona la banda WiFi que deseas estimar.</p></article>
+          <article class="step-card"><span class="step-no">03 / EXPLORAR</span><h3>Recorre la escena</h3><p>Gira y acerca el modelo 3D para explorar visualmente las zonas del espacio.</p></article>
+        </div>
+        <div class="future-note"><strong>DESARROLLO FUTURO</strong><span>La interacción descrita corresponde a una versión futura del simulador, no a una herramienta ya operativa.</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="bandas">
+      <div class="wrap">
+        <p class="eyebrow">03 &nbsp;/&nbsp; COMPARATIVA DE FRECUENCIAS</p>
+        <h2 class="section-title">Dos bandas, distintos compromisos.</h2>
+        <p class="section-lead">El entorno y la frecuencia influyen en la cobertura esperada. El proyecto busca ayudar a entender estas diferencias de forma visual.</p>
+        <div class="bands-grid">
+          <article class="band-card">
+            <span class="band-label">BANDA &nbsp; / &nbsp; 2.4 GHz</span>
+            <h3>Llega más lejos. Se adapta mejor a los obstáculos.</h3>
+            <p>Suele ofrecer mayor alcance y mejor penetración en algunos materiales. Puede ser una opción útil cuando la distancia importa más que la velocidad máxima.</p>
+            <p class="band-traits">COBERTURA AMPLIA &nbsp;·&nbsp; MAYOR CONGESTIÓN</p>
+          </article>
+          <article class="band-card five">
+            <span class="band-label">BANDA &nbsp; / &nbsp; 5 GHz</span>
+            <h3>Más capacidad en distancias cortas.</h3>
+            <p>Puede ofrecer mayor velocidad y menos congestión, aunque la señal suele atenuarse más al atravesar paredes y al alejarse del router.</p>
+            <p class="band-traits">MAYOR VELOCIDAD &nbsp;·&nbsp; MENOR ALCANCE</p>
+          </article>
+        </div>
+        <p class="disclaimer">El comportamiento real también depende del router, los materiales, las interferencias y los dispositivos conectados.</p>
+      </div>
+    </section>
+
+    <section class="section faq" id="faq">
+      <div class="wrap">
+        <p class="eyebrow">04 &nbsp;/&nbsp; PREGUNTAS FRECUENTES</p>
+        <h2 class="section-title">Lo esencial, sin letra pequeña.</h2>
+        <p class="section-lead">Qué esperar del proyecto y cómo interpretar sus resultados.</p>
+        <div class="faq-list">
+          <details class="faq-item" open>
+            <summary>¿El simulador ya está disponible?</summary>
+            <p class="faq-answer">No todavía. El simulador es un desarrollo futuro; actualmente, esta web es la plataforma de presentación del proyecto y de su funcionamiento previsto.</p>
+          </details>
+          <details class="faq-item">
+            <summary>¿Qué información se podrá configurar?</summary>
+            <p class="faq-answer">La propuesta contempla las dimensiones y la distribución del espacio, la ubicación del punto de acceso, los obstáculos y materiales, y la banda WiFi que se desea estimar.</p>
+          </details>
+          <details class="faq-item">
+            <summary>¿Cuál es la diferencia entre 2.4 GHz y 5 GHz?</summary>
+            <p class="faq-answer">En general, 2.4 GHz suele ofrecer mayor alcance y penetración, mientras que 5 GHz puede ofrecer más velocidad en distancias menores. El resultado depende del entorno y los equipos.</p>
+          </details>
+          <details class="faq-item">
+            <summary>¿La escena 3D reemplazará una medición real?</summary>
+            <p class="faq-answer">No. La escena actual es una representación conceptual para explorar el proyecto; no calcula la propagación real ni sustituye un estudio radioeléctrico o una medición profesional en el lugar.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="autores">
+      <div class="wrap">
+        <p class="eyebrow">05 &nbsp;/&nbsp; CRÉDITOS</p>
+        <h2 class="section-title">Un equipo detrás de la propuesta.</h2>
+        <p class="section-lead">Autores y desarrolladores de la plataforma de presentación.</p>
+        <div class="author-list">
+          <p class="author-label">Autores del proyecto</p>
+          <ul class="author-names">
+            <li>Sebastian Minorta</li>
+            <li>Sofia Madriz</li>
+            <li>Juan Lozano</li>
+            <li>Andres Perozo</li>
+            <li>Abraham Martinez</li>
+            <li>Juan Manzanero</li>
+          </ul>
+        </div>
+        <footer class="site-footer">
+          <span class="footer-brand">WIFIMAP &nbsp;/&nbsp; ENTORNO 3D CONCEPTUAL</span>
+          <span>Proyecto de estimación de cobertura WiFi · 2.4 GHz y 5 GHz</span>
+        </footer>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const menuButton = document.querySelector(".menu-toggle");
+    const navLinks = document.querySelector(".nav-links");
+    const bandButtons = document.querySelectorAll(".band-switch button");
+    const resetButton = document.querySelector(".scene-reset");
+    const sceneElement = document.querySelector("#hero-scene");
+    const sceneStatus = document.querySelector("#scene-status");
+
+    menuButton.addEventListener("click", () => {
+      const isOpen = navLinks.classList.toggle("open");
+      menuButton.setAttribute("aria-expanded", String(isOpen));
+      menuButton.setAttribute("aria-label", isOpen ? "Cerrar menú" : "Abrir menú");
+    });
+
+    navLinks.addEventListener("click", (event) => {
+      if (event.target.closest("a")) {
+        navLinks.classList.remove("open");
+        menuButton.setAttribute("aria-expanded", "false");
+        menuButton.setAttribute("aria-label", "Abrir menú");
+      }
+    });
+
+    async function initializeScene() {
+      try {
+        const THREE = await import("three");
+        const { OrbitControls } = await import("three/addons/controls/OrbitControls.js");
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+        const compactScene = window.matchMedia("(max-width: 680px)").matches;
+        const initialTargetY = compactScene ? -0.8 : 1.2;
+        camera.position.set(compactScene ? 11 : 9.5, compactScene ? 10 : 9, compactScene ? 14 : 12);
+        camera.lookAt(0, initialTargetY, 0);
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "low-power" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.15;
+        renderer.domElement.tabIndex = 0;
+        renderer.domElement.setAttribute("aria-label", "Escena 3D interactiva. Usa las flechas para girar y la rueda para acercar o alejar.");
+        sceneElement.append(renderer.domElement);
+
+        scene.add(new THREE.HemisphereLight(0xffead5, 0x241816, 2.1));
+        const keyLight = new THREE.DirectionalLight(0xffd5b0, 2.7);
+        keyLight.position.set(-4, 9, 5);
+        scene.add(keyLight);
+        const fillLight = new THREE.PointLight(0xe76f51, 35, 18);
+        fillLight.position.set(1, 4, -2);
+        scene.add(fillLight);
+
+        const model = new THREE.Group();
+        model.position.x = 1.6;
+        scene.add(model);
+
+        const floor = new THREE.Mesh(
+          new THREE.PlaneGeometry(8, 6),
+          new THREE.MeshStandardMaterial({ color: 0x514138, roughness: 0.88, metalness: 0.04 })
+        );
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.015;
+        model.add(floor);
+
+        const grid = new THREE.GridHelper(8, 16, 0xd6c2a1, 0x9b8067);
+        grid.position.y = 0.005;
+        grid.material.transparent = true;
+        grid.material.opacity = 0.22;
+        model.add(grid);
+
+        const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x9c7965, roughness: 0.78, metalness: 0.02 });
+        const wallHeight = 2.2;
+        function addWall(x1, z1, x2, z2) {
+          const dx = x2 - x1;
+          const dz = z2 - z1;
+          const length = Math.hypot(dx, dz);
+          const wall = new THREE.Mesh(new THREE.BoxGeometry(length, wallHeight, 0.12), wallMaterial);
+          wall.position.set((x1 + x2) / 2, wallHeight / 2, (z1 + z2) / 2);
+          wall.rotation.y = -Math.atan2(dz, dx);
+          model.add(wall);
+        }
+
+        addWall(-4, -3, 4, -3);
+        addWall(-4, -3, -4, 3);
+        addWall(4, -3, 4, 3);
+        addWall(-4, 3, -1.6, 3);
+        addWall(1.6, 3, 4, 3);
+        addWall(-0.8, -3, -0.8, -0.5);
+        addWall(-0.8, 0.5, -0.8, 2.2);
+        addWall(-0.8, 0.5, 1.2, 0.5);
+        addWall(2.1, 0.5, 4, 0.5);
+
+        function addRoomLabel(text, x, z) {
+          const canvas = document.createElement("canvas");
+          canvas.width = 512;
+          canvas.height = 128;
+          const context = canvas.getContext("2d");
+          context.fillStyle = "rgba(25, 20, 18, 0.68)";
+          context.beginPath();
+          context.roundRect(8, 8, 496, 112, 22);
+          context.fill();
+          context.fillStyle = "#f7f1e8";
+          context.font = "600 34px Segoe UI, sans-serif";
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.fillText(text, 256, 64);
+          const texture = new THREE.CanvasTexture(canvas);
+          texture.colorSpace = THREE.SRGBColorSpace;
+          const label = new THREE.Mesh(
+            new THREE.PlaneGeometry(2.1, 0.52),
+            new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false })
+          );
+          label.rotation.x = -Math.PI / 2;
+          label.position.set(x, 0.018, z);
+          model.add(label);
+        }
+        addRoomLabel("SALA", -2.5, 1.5);
+        addRoomLabel("ESTUDIO", 2.45, 1.65);
+        addRoomLabel("HABITACIÓN", 2.4, -1.5);
+
+        const routerX = -0.05;
+        const routerZ = -0.35;
+        const router = new THREE.Group();
+        router.position.set(routerX, 0, routerZ);
+        model.add(router);
+        const routerBody = new THREE.Mesh(
+          new THREE.BoxGeometry(0.7, 0.16, 0.42),
+          new THREE.MeshStandardMaterial({ color: 0xe76f51, roughness: 0.38, metalness: 0.16 })
+        );
+        routerBody.position.y = 0.14;
+        router.add(routerBody);
+        const antennaMaterial = new THREE.MeshStandardMaterial({ color: 0xf7f1e8, roughness: 0.35, metalness: 0.22 });
+        [-0.24, 0.24].forEach((x) => {
+          const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.56, 8), antennaMaterial);
+          antenna.position.set(x, 0.49, -0.08);
+          antenna.rotation.z = x < 0 ? 0.12 : -0.12;
+          router.add(antenna);
+        });
+        const led = new THREE.Mesh(
+          new THREE.SphereGeometry(0.035, 12, 8),
+          new THREE.MeshBasicMaterial({ color: 0xffddaa })
+        );
+        led.position.set(0, 0.17, 0.22);
+        router.add(led);
+
+        const coverageMaterial = new THREE.ShaderMaterial({
+          transparent: true,
+          depthWrite: false,
+          uniforms: { uColor: { value: new THREE.Color(0xe76f51) }, uTime: { value: 0 } },
+          vertexShader: `
+            varying vec2 vUv;
+            void main() {
+              vUv = uv;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform vec3 uColor;
+            uniform float uTime;
+            varying vec2 vUv;
+            void main() {
+              float distanceFromCenter = length((vUv - 0.5) * 2.0);
+              float edge = 1.0 - smoothstep(0.62, 1.0, distanceFromCenter);
+              float pulse = 0.9 + 0.1 * sin(uTime * 1.5);
+              float alpha = exp(-distanceFromCenter * 2.0) * edge * 0.58 * pulse;
+              if (alpha < 0.015) discard;
+              gl_FragColor = vec4(uColor, alpha);
+              #include <tonemapping_fragment>
+              #include <colorspace_fragment>
+            }
+          `
+        });
+        const coverage = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), coverageMaterial);
+        coverage.rotation.x = -Math.PI / 2;
+        coverage.position.set(routerX, 0.025, routerZ);
+        model.add(coverage);
+
+        const rippleMaterial = new THREE.MeshBasicMaterial({
+          color: 0xe76f51,
+          transparent: true,
+          opacity: 0.32,
+          depthWrite: false
+        });
+        const ripples = [0.72, 1.28, 1.84].map((radius) => {
+          const ripple = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.012, 6, 80), rippleMaterial.clone());
+          ripple.rotation.x = Math.PI / 2;
+          ripple.position.set(routerX, 0.045, routerZ);
+          model.add(ripple);
+          return ripple;
+        });
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0, compactScene ? -0.8 : 0.8, 0);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.055;
+        controls.minDistance = 7;
+        controls.maxDistance = 19;
+        controls.maxPolarAngle = Math.PI / 2.05;
+        controls.update();
+        controls.saveState();
+
+        let selectedBand = "2.4";
+        function setBand(band) {
+          selectedBand = band;
+          const is24 = band === "2.4";
+          const color = is24 ? 0xe76f51 : 0xd6c2a1;
+          coverageMaterial.uniforms.uColor.value.setHex(color);
+          rippleMaterial.color.setHex(color);
+          ripples.forEach((ripple) => ripple.material.color.setHex(color));
+          const radius = is24 ? 4.7 : 3.35;
+          coverage.scale.set(radius * 2, radius * 2, 1);
+          bandButtons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.band === band));
+          });
+        }
+        bandButtons.forEach((button) => {
+          button.addEventListener("click", () => setBand(button.dataset.band));
+        });
+        resetButton.addEventListener("click", () => controls.reset());
+        setBand(selectedBand);
+
+        const resizeObserver = new ResizeObserver(() => {
+          const width = sceneElement.clientWidth;
+          const height = sceneElement.clientHeight;
+          if (!width || !height) return;
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+          renderer.setSize(width, height, false);
+          renderer.render(scene, camera);
+        });
+        resizeObserver.observe(sceneElement);
+
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        let animationFrame;
+        function renderFrame(time) {
+          coverageMaterial.uniforms.uTime.value = time * 0.001;
+          ripples.forEach((ripple, index) => {
+            const phase = (time * 0.00035 + index / ripples.length) % 1;
+            const scale = 0.8 + phase * (selectedBand === "2.4" ? 1.9 : 1.35);
+            ripple.scale.setScalar(scale);
+            ripple.material.opacity = 0.34 * (1 - phase);
+          });
+          controls.update();
+          renderer.render(scene, camera);
+          animationFrame = window.requestAnimationFrame(renderFrame);
+        }
+        function updateMotion() {
+          if (animationFrame) window.cancelAnimationFrame(animationFrame);
+          animationFrame = 0;
+          if (reducedMotion.matches) {
+            ripples.forEach((ripple, index) => {
+              ripple.scale.setScalar(0.9 + index * 0.28);
+              ripple.material.opacity = 0.22;
+            });
+            renderer.render(scene, camera);
+          } else {
+            animationFrame = window.requestAnimationFrame(renderFrame);
+          }
+        }
+        reducedMotion.addEventListener("change", updateMotion);
+        updateMotion();
+        sceneStatus.textContent = "";
+        window.addEventListener("pagehide", () => {
+          if (animationFrame) window.cancelAnimationFrame(animationFrame);
+          resizeObserver.disconnect();
+          controls.dispose();
+          renderer.dispose();
+        }, { once: true });
+      } catch (error) {
+        console.error("No se pudo iniciar la escena 3D.", error);
+        document.querySelector(".hero").classList.add("no-webgl");
+        sceneStatus.textContent = "No se pudo cargar la escena 3D. Comprueba tu conexión y que el navegador permita WebGL.";
+        bandButtons.forEach((button) => {
+          button.disabled = true;
+        });
+        resetButton.disabled = true;
+      }
+    }
+
+    initializeScene();
+  </script>
+</body>
+</html>
