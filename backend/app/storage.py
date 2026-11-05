@@ -77,6 +77,10 @@ def save_simulation(simulation_id: str, request: SimulationRequest) -> None:
                         "interference_dbm": request.interference_dbm,
                         "additional_loss_db": request.additional_loss_db,
                         "thresholds": request.thresholds.model_dump(),
+                        "access_points": [
+                            access_point.model_dump()
+                            for access_point in request.active_access_points
+                        ],
                     }
                 ),
             ),

@@ -48,6 +48,42 @@ class Dimensions3D(BaseModel):
     z: FiniteFloat = Field(gt=0, le=30)
 
 
+class WallOpening(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["door", "window"]
+    width_m: FiniteFloat = Field(gt=0, le=20)
+    height_m: FiniteFloat = Field(gt=0, le=20)
+    offset_m: FiniteFloat = Field(default=0, ge=-50, le=50)
+    sill_height_m: FiniteFloat = Field(default=0, ge=0, le=20)
+
+
+class AccessPoint(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=80)
+    position: Point3D
+    transmit_power_dbm: FiniteFloat = Field(default=20.0, ge=-10, le=40)
+    frequency: Frequency | None = None
+    channel: int | None = Field(default=None, ge=1, le=196)
+
+    @model_validator(mode="after")
+    def validate_radio_channel(self) -> "AccessPoint":
+        if self.frequency is None:
+            if self.channel is not None:
+                raise ValueError("El canal requiere una banda de frecuencia explícita.")
+            return self
+        if self.channel is None:
+            raise ValueError("Cada radio debe indicar un canal.")
+        if self.frequency == Frequency.GHZ_2_4 and self.channel not in range(1, 14):
+            raise ValueError("En 2.4 GHz se admiten canales del 1 al 13.")
+        if self.frequency == Frequency.GHZ_5 and self.channel not in {
+            36, 40, 44, 48, 149, 153, 157, 161, 165
+        }:
+            raise ValueError("Canal de 5 GHz no disponible en este modelo.")
+        return self
+
+
 class Obstacle(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -67,6 +103,7 @@ class Obstacle(BaseModel):
     center: Point3D
     dimensions: Dimensions3D
     material: MaterialName
+    opening: WallOpening | None = None
     attenuation_2_4_ghz_db: FiniteFloat | None = Field(default=None, ge=0, le=100)
     attenuation_5_ghz_db: FiniteFloat | None = Field(default=None, ge=0, le=100)
 
@@ -97,6 +134,7 @@ class SimulationRequest(BaseModel):
 
     dimensions: Dimensions3D
     router: Point3D
+    access_points: list[AccessPoint] | None = Field(default=None, min_length=1, max_length=8)
     frequency: Frequency = Frequency.GHZ_2_4
     transmit_power_dbm: FiniteFloat = Field(default=20.0, ge=-10, le=40)
     transmit_antenna_gain_dbi: FiniteFloat = Field(default=0.0, ge=-10, le=20)
@@ -121,6 +159,16 @@ class SimulationRequest(BaseModel):
         ids = [obstacle.id for obstacle in self.obstacles]
         if len(ids) != len(set(ids)):
             raise ValueError("Los identificadores de obstáculos deben ser únicos.")
+        if self.access_points is not None:
+            access_point_ids = [access_point.id for access_point in self.access_points]
+            if len(access_point_ids) != len(set(access_point_ids)):
+                raise ValueError("Los identificadores de puntos de acceso deben ser únicos.")
+            for access_point in self.access_points:
+                position = access_point.position
+                if position.x > d.x or position.y > d.y or position.z > d.z:
+                    raise ValueError(
+                        f"El punto de acceso '{access_point.id}' debe estar dentro de las dimensiones del inmueble."
+                    )
         for obstacle in self.obstacles:
             for axis in ("x", "y", "z"):
                 center = getattr(obstacle.center, axis)
@@ -130,7 +178,36 @@ class SimulationRequest(BaseModel):
                     raise ValueError(
                         f"El obstáculo '{obstacle.id}' excede el inmueble en el eje {axis.upper()}."
                     )
+            if obstacle.opening is not None:
+                if obstacle.type != "wall":
+                    raise ValueError("Las puertas y ventanas solo pueden pertenecer a un obstáculo de tipo pared.")
+                horizontal_dimensions = (obstacle.dimensions.x, obstacle.dimensions.y)
+                short_span = min(horizontal_dimensions)
+                long_span = max(horizontal_dimensions)
+                if short_span >= long_span * 0.25:
+                    raise ValueError("La pared con abertura debe ser una caja alargada y delgada.")
+                opening = obstacle.opening
+                if opening.width_m > long_span:
+                    raise ValueError("El ancho de la abertura no puede superar el largo de la pared.")
+                if abs(opening.offset_m) + opening.width_m / 2 > long_span / 2:
+                    raise ValueError("La abertura debe quedar dentro de los extremos de la pared.")
+                if opening.sill_height_m + opening.height_m > obstacle.dimensions.z:
+                    raise ValueError("La abertura debe quedar dentro de la altura de la pared.")
+                if opening.type == "door" and opening.sill_height_m != 0:
+                    raise ValueError("Una puerta debe comenzar al nivel del suelo de la pared.")
         return self
+
+    @property
+    def active_access_points(self) -> list[AccessPoint]:
+        if self.access_points is not None:
+            return self.access_points
+        return [
+            AccessPoint(
+                id="ap-1",
+                position=self.router,
+                transmit_power_dbm=self.transmit_power_dbm,
+            )
+        ]
 
 
 class CutAxis(str, Enum):

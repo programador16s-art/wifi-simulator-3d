@@ -28,9 +28,13 @@ The `api-config.js` committed to the repository intentionally contains no servic
 
 ## Configure a simulation in the page
 
-From the landing page, select **Abrir el simulador** to open `simulador.html`. Set room dimensions, router coordinates, voxel size, and up to 20 obstacles with material and 3D dimensions. The initial values recreate the sample room. Submit the form to calculate the selected band; use the 2.4/5 GHz controls in the 3D view to recalculate the same setup at the other frequency. The result card reports average RSSI/SNR, useful coverage, and voxel count.
+From the landing page, select **Abrir el simulador** to open `simulador.html`. Set room dimensions, one to eight access-point radio positions, transmit powers, bands and channels, voxel size, and up to 20 obstacles with material and 3D dimensions. The initial values recreate the sample room. Submit the form to calculate the selected band; use the 2.4/5 GHz controls in the 3D view to recalculate the same setup at the other frequency. The result card reports average RSSI/SINR, useful coverage, voxel count, and the share of valid voxels served by each active radio.
 
-The room and router coordinates use metres: X/Y are on the floor plane and Z is height. Obstacles are axis-aligned boxes. Keep the router and every obstacle inside the room; the interface checks the 20,000-voxel engine limit before sending a request. The 3D view draws room dimensions, the router, material-colored obstacle boxes, and three RSSI slices.
+Use **Optimizar canales** with at least two radios on the selected band to request a heuristic channel plan. The recommendation compares the current and proposed average/10th-percentile SINR; **Aplicar canales sugeridos** explicitly copies the proposed channels into the form and recalculates the map. The optimizer evaluates up to 1,000 voxels and performs up to three coordinate-descent passes over supported channels, so the result is a local recommendation, not a guaranteed global optimum.
+
+After a successful calculation, enter a name and save the scenario to this browser. Up to 10 scenarios store the submitted configuration and summary metrics (not the 3D voxel arrays). Select two saved scenarios to compare RSSI, useful coverage, SINR, grid size, and AP channels; use **Cargar** to restore a saved setup and recalculate it before editing or saving a new result. Saved scenarios remain in the browser's local storage and are not synchronized to the API or another device.
+
+The room and access-point coordinates use metres: X/Y are on the floor plane and Z is height. Obstacles are axis-aligned boxes. Keep every access point and obstacle inside the room; the interface checks the 20,000-voxel engine limit before sending a request. The 3D view draws room dimensions, the active-band access points, material-colored obstacle boxes, and three slices of the selected RSSI or SINR map.
 
 ## 3D materials and lighting
 
@@ -46,7 +50,7 @@ Coordinates are metres with **X and Y on the floor plane and Z as height**. The 
 
 Received power is `Ptx + Gtx - Ltx - FSPL - obstacle losses - additional losses + Grx`. FSPL uses distance in kilometres and frequency in MHz. Distances below 0.1 m are clamped to 0.1 m to avoid a singularity. Thermal noise is `-174 + 10 log10(B) + NF`; configured interference is added in linear power units.
 
-Obstacle geometry in the first version is an axis-aligned 3D box. Each distinct box contributes its configured material loss once when a direct source-to-voxel segment intersects it. Default material losses are **orientative estimates**, not experimental measurements; custom per-frequency losses may be supplied. Reflection, diffraction, furniture scattering and multipath are not modeled.
+Obstacle geometry is an axis-aligned 3D box. Each distinct box contributes its configured material loss once when a direct source-to-voxel segment intersects it. The editor supports openings in elongated walls: a door is a clear passage and its voxels are not treated as solid; a window remains solid and replaces the wall loss with the estimated `glass` material loss. The opening width, horizontal offset, and height must fit inside the wall box. For multiple radios on the selected band, each voxel is associated with the radio having the highest estimated SINR. Interference is estimated by summing received powers in linear units; 2.4 GHz channels use a simplified overlap weight that decreases with channel separation, while 5 GHz interference is included only for equal channel numbers. The channel optimizer maximizes a weighted score of SINR's 10th percentile and mean on a reduced grid using coordinate descent. This is a channel-planning approximation, not a standards-accurate adjacent-channel or airtime model. Default material losses are **orientative estimates**, not experimental measurements; custom per-frequency losses may be supplied. Reflection, diffraction, furniture scattering, multipath, client roaming, and real-device channel behavior are not modeled.
 
 Voxels inside a solid obstacle are marked invalid. Grid size is capped at 20,000 voxels per request. RSSI classes default to excellent (`>= -50 dBm`), good (`>= -60`), fair (`>= -67`), weak (`>= -75`) and dead (`< -75`); thresholds are configurable.
 
@@ -57,6 +61,7 @@ Voxels inside a solid obstacle are marked invalid. Grid size is capped at 20,000
 - `POST /api/simulacion/calcular`
 - `POST /api/simulacion/comparar`
 - `POST /api/simulacion/optimizar`
+- `POST /api/simulacion/optimizar-canales`
 - `GET /api/simulacion/cortes?simulation_id=...&axis=z&coordinate_m=1.2`
 
 Request JSON is validated by Pydantic. The calculate and compare responses contain numeric grids (unless `include_grid` is false) plus statistics and model limitations. A cut is available from the bounded in-memory cache; restart or eviction requires recalculation. The optimizer uses SciPy differential evolution over a reduced receiver grid and avoids candidates inside supplied solid obstacles.

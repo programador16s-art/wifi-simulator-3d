@@ -12,6 +12,7 @@ from .engine import (
     SimulationError,
     extract_cut,
     get_cached_simulation,
+    optimize_channels,
     optimize_router,
     simulate,
 )
@@ -113,11 +114,19 @@ def calculate(request: SimulationRequest) -> dict:
 def compare(request: SimulationRequest) -> dict:
     try:
         comparisons = {}
+        available_frequencies = []
         for frequency in (Frequency.GHZ_2_4, Frequency.GHZ_5):
+            if request.access_points is not None and not any(
+                access_point.frequency is None or access_point.frequency == frequency
+                for access_point in request.access_points
+            ):
+                continue
             _, result = simulate(request, frequency)
             comparisons[frequency.value] = result
+            available_frequencies.append(frequency.value)
         return {
             "same_geometry_and_transmitter": True,
+            "available_frequencies_ghz": available_frequencies,
             "comparison": comparisons,
         }
     except SimulationError as error:
@@ -128,6 +137,14 @@ def compare(request: SimulationRequest) -> dict:
 def optimize(request: SimulationRequest) -> dict:
     try:
         return optimize_router(request)
+    except SimulationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.post("/api/simulacion/optimizar-canales")
+def optimize_channel_plan(request: SimulationRequest) -> dict:
+    try:
+        return optimize_channels(request)
     except SimulationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 

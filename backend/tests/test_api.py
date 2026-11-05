@@ -38,6 +38,23 @@ def test_calculate_and_request_cached_cut():
     assert len(cut.json()["rssi_dbm"]) == 4
 
 
+def test_calculate_accepts_multiple_access_points_and_returns_service_map():
+    request = {
+        "dimensions": {"x": 4, "y": 1, "z": 1},
+        "router": {"x": 0.5, "y": 0.5, "z": 0.5},
+        "voxel_size_m": 1,
+        "access_points": [
+            {"id": "ap-left", "position": {"x": 0.5, "y": 0.5, "z": 0.5}},
+            {"id": "ap-right", "position": {"x": 3.5, "y": 0.5, "z": 0.5}},
+        ],
+    }
+    response = client.post("/api/simulacion/calcular", json=request)
+    assert response.status_code == 200
+    data = response.json()
+    assert [point["id"] for point in data["access_points"]] == ["ap-left", "ap-right"]
+    assert data["fields"]["serving_ap_index_zyx"][0][0] == [0, 0, 1, 1]
+
+
 def test_compare_uses_both_bands_with_same_geometry():
     response = client.post("/api/simulacion/comparar", json=SMALL_REQUEST)
     assert response.status_code == 200
@@ -46,12 +63,58 @@ def test_compare_uses_both_bands_with_same_geometry():
     assert set(body["comparison"]) == {"2.4", "5"}
 
 
+def test_compare_reports_only_bands_with_configured_radios():
+    request = {
+        **SMALL_REQUEST,
+        "access_points": [
+            {
+                "id": "ap-24",
+                "position": {"x": 0.5, "y": 0.5, "z": 1},
+                "frequency": "2.4",
+                "channel": 1,
+            }
+        ],
+    }
+    response = client.post("/api/simulacion/comparar", json=request)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["available_frequencies_ghz"] == ["2.4"]
+    assert set(body["comparison"]) == {"2.4"}
+
+
 def test_optimizer_endpoint_returns_xyz_recommendation():
     response = client.post("/api/simulacion/optimizar", json=SMALL_REQUEST)
     assert response.status_code == 200
     result = response.json()
     assert set(result["recommended_position_m"]) == {"x", "y", "z"}
     assert result["evaluation_voxels"] > 0
+
+
+def test_channel_optimizer_endpoint_returns_before_and_after_plan():
+    request = {
+        "dimensions": {"x": 4, "y": 1, "z": 1},
+        "router": {"x": 0.5, "y": 0.5, "z": 0.5},
+        "voxel_size_m": 0.5,
+        "access_points": [
+            {
+                "id": "ap-left",
+                "position": {"x": 0.5, "y": 0.5, "z": 0.5},
+                "frequency": "2.4",
+                "channel": 1,
+            },
+            {
+                "id": "ap-right",
+                "position": {"x": 3.5, "y": 0.5, "z": 0.5},
+                "frequency": "2.4",
+                "channel": 1,
+            },
+        ],
+    }
+    response = client.post("/api/simulacion/optimizar-canales", json=request)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["after"]["average_sinr_db"] > data["before"]["average_sinr_db"]
+    assert len({item["channel"] for item in data["recommended_channels"]}) == 2
 
 
 def test_invalid_request_and_unknown_cut_report_errors():

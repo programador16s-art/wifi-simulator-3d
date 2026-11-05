@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#211b19">
-  <meta name="description" content="Configura dimensiones, router y obstáculos para explorar una estimación 3D de cobertura WiFi en 2.4 GHz y 5 GHz.">
+  <meta name="description" content="Configura dimensiones, puntos de acceso y obstáculos para explorar una estimación 3D de cobertura WiFi en 2.4 GHz y 5 GHz.">
   <meta name="wifi-simulator-api" content="">
   <title>Simulador WiFi 3D — WiFiMap</title>
   <script type="importmap">
@@ -190,12 +190,12 @@
     .scene-card { display: grid; gap: 3px; padding: 11px 14px; border: 1px solid rgb(214 194 161 / 22%); border-radius: 13px; background: rgb(25 20 18 / 76%); backdrop-filter: blur(12px); }
     .scene-label { color: var(--coral-light); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .1em; }
     .scene-title { color: var(--paper); font-size: 12px; font-weight: 600; }
-    .band-switch { display: flex; gap: 4px; padding: 5px; border: 1px solid rgb(214 194 161 / 24%); border-radius: 10px; background: rgb(25 20 18 / 82%); backdrop-filter: blur(12px); pointer-events: auto; }
-    .band-switch button, .scene-reset { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 10px "Cascadia Code", Consolas, monospace; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
-    .band-switch button[aria-pressed="true"] { background: var(--coral); color: var(--deep); }
+    .band-switch, .map-switch { display: flex; gap: 4px; padding: 5px; border: 1px solid rgb(214 194 161 / 24%); border-radius: 10px; background: rgb(25 20 18 / 82%); backdrop-filter: blur(12px); pointer-events: auto; }
+    .band-switch button, .map-switch button, .scene-reset { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: 10px "Cascadia Code", Consolas, monospace; cursor: pointer; transition: background .2s, color .2s, border-color .2s; }
+    .band-switch button[aria-pressed="true"], .map-switch button[aria-pressed="true"] { background: var(--coral); color: var(--deep); }
     .scene-reset { border: 1px solid rgb(214 194 161 / 24%); background: rgb(25 20 18 / 78%); color: var(--paper); backdrop-filter: blur(12px); pointer-events: auto; }
     .scene-reset:hover { border-color: var(--sand); }
-    .scene-reset:disabled, .band-switch button:disabled { cursor: not-allowed; opacity: .55; }
+    .scene-reset:disabled, .band-switch button:disabled, .map-switch button:disabled { cursor: not-allowed; opacity: .55; }
     .scene-hint { color: var(--paper); text-shadow: 0 1px 8px var(--deep); font: 9px "Cascadia Code", Consolas, monospace; letter-spacing: .04em; }
     .scene-status { max-width: 320px; color: var(--muted); font-size: 11px; text-align: right; }
     .scene-status:empty { display: none; }
@@ -218,6 +218,8 @@
     .obstacle-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: rgb(25 20 18 / 45%); }
     .obstacle-label { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; color: var(--paper); font-size: 12px; font-weight: 600; }
     .obstacle-fields, .obstacle-material { grid-column: 1 / -1; }
+    .opening-fields { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; padding: 11px; border: 1px solid rgb(214 194 161 / 18%); border-radius: 10px; background: rgb(43 36 33 / 68%); }
+    .opening-fields[hidden], .form-field[hidden] { display: none; }
     .obstacle-remove { min-height: 42px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
     .obstacle-remove:hover { border-color: var(--coral); color: var(--paper); }
     .obstacle-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 13px; }
@@ -235,6 +237,31 @@
     .result-metric { padding: 13px; border: 1px solid var(--line); border-radius: 12px; background: var(--deep); }
     .result-metric span { display: block; color: var(--muted); font-size: 10px; }
     .result-metric strong { display: block; margin-top: 5px; font: 600 18px "Cascadia Code", Consolas, monospace; }
+    .ap-service { display: grid; gap: 8px; margin-top: 16px; }
+    .ap-service:empty { display: none; }
+    .ap-service-row { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+    .ap-service-row strong { color: var(--paper); font-family: "Cascadia Code", Consolas, monospace; }
+    .channel-recommendation { margin-top: 16px; padding: 14px; border: 1px solid rgb(214 194 161 / 22%); border-radius: 12px; background: var(--surface-raised); }
+    .channel-recommendation[hidden] { display: none; }
+    .channel-recommendation h4 { margin: 0; color: var(--paper); font-size: 13px; }
+    .channel-recommendation p { margin: 8px 0; color: var(--muted); font-size: 11px; }
+    .channel-plan-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+    .channel-plan-row strong { color: var(--paper); font-family: "Cascadia Code", Consolas, monospace; }
+    .saved-scenarios { display: grid; gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .saved-scenarios h4 { margin: 0; color: var(--paper); font-size: 13px; }
+    .scenario-save-controls { display: flex; gap: 8px; }
+    .scenario-save-controls input { flex: 1; min-width: 0; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--deep); color: var(--paper); font: 12px "Cascadia Code", Consolas, monospace; }
+    .scenario-save-controls input:focus { outline: 2px solid var(--coral); outline-offset: 2px; }
+    .saved-scenario-list { display: grid; gap: 8px; }
+    .saved-scenario-row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 8px; padding: 9px; border: 1px solid var(--line); border-radius: 10px; background: var(--deep); }
+    .saved-scenario-row label { min-width: 0; color: var(--paper); font-size: 11px; overflow-wrap: anywhere; }
+    .saved-scenario-row small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; }
+    .saved-scenario-row button { padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; background: transparent; color: var(--muted); font-size: 10px; cursor: pointer; }
+    .scenario-comparison { overflow-x: auto; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--deep); }
+    .scenario-comparison[hidden] { display: none; }
+    .scenario-comparison table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: left; }
+    .scenario-comparison th, .scenario-comparison td { padding: 7px 6px; border-bottom: 1px solid var(--line); color: var(--muted); }
+    .scenario-comparison th { color: var(--paper); }
     .model-note { margin: 18px 0 0; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
     @keyframes hero-rise {
       from { opacity: 0; transform: translateY(18px); }
@@ -441,6 +468,10 @@
           <span class="scene-label">VISTA 3D</span>
           <span class="scene-title">Mapa RSSI</span>
         </div>
+        <div class="map-switch" role="group" aria-label="Tipo de mapa">
+          <button type="button" data-map-field="rssi_dbm" aria-pressed="true">RSSI</button>
+          <button type="button" data-map-field="sinr_db" aria-pressed="false">SINR</button>
+        </div>
         <div class="band-switch" role="group" aria-label="Cambiar banda de la visualización">
           <button type="button" data-band="2.4" aria-pressed="true">2.4 GHz</button>
           <button type="button" data-band="5" aria-pressed="false">5 GHz</button>
@@ -465,11 +496,14 @@
               </div>
             </fieldset>
             <fieldset class="config-group">
-              <legend>Ubicación del router</legend>
-              <div class="field-grid">
-                <div class="form-field"><label for="router-x">Posición X (m)</label><input id="router-x" name="router-x" type="number" min="0" max="100" step="any" value="3.95" required></div>
-                <div class="form-field"><label for="router-y">Posición Y (m)</label><input id="router-y" name="router-y" type="number" min="0" max="100" step="any" value="2.65" required></div>
-                <div class="form-field"><label for="router-z">Altura Z (m)</label><input id="router-z" name="router-z" type="number" min="0" max="30" step="any" value="0.65" required></div>
+              <legend>Puntos de acceso</legend>
+              <div class="obstacle-list" id="access-point-list"></div>
+              <div class="obstacle-actions">
+                <span class="obstacle-limit">Hasta 8 AP. Cada zona se asigna al punto de acceso con mayor SINR estimado.</span>
+                <div class="obstacle-actions">
+                  <button class="add-obstacle" id="add-access-point" type="button">+ Agregar AP</button>
+                  <button class="add-obstacle" id="optimize-channels" type="button">Optimizar canales</button>
+                </div>
               </div>
             </fieldset>
             <fieldset class="config-group">
@@ -483,7 +517,7 @@
               <legend>Obstáculos y materiales</legend>
               <div class="obstacle-list" id="obstacle-list"></div>
               <div class="obstacle-actions">
-                <span class="obstacle-limit">Hasta 20 obstáculos por escenario. La caja clara indica el volumen usado en el cálculo, incluso para muebles detallados.</span>
+                <span class="obstacle-limit">Hasta 20 obstáculos. En paredes puedes añadir una puerta abierta o una ventana de vidrio.</span>
                 <button class="add-obstacle" id="add-obstacle" type="button">+ Agregar obstáculo</button>
               </div>
             </fieldset>
@@ -497,10 +531,30 @@
             <div class="result-metrics" aria-live="polite">
               <div class="result-metric"><span>RSSI promedio</span><strong id="result-rssi">—</strong></div>
               <div class="result-metric"><span>Cobertura útil</span><strong id="result-coverage">—</strong></div>
-              <div class="result-metric"><span>SNR promedio</span><strong id="result-snr">—</strong></div>
+              <div class="result-metric"><span>SINR promedio</span><strong id="result-snr">—</strong></div>
               <div class="result-metric"><span>Vóxeles evaluados</span><strong id="result-voxels">—</strong></div>
             </div>
-            <p class="model-note">Estimación educativa con pérdida en espacio libre y atenuación orientativa por obstáculos. No modela reflexión, difracción ni multipath; no sustituye una medición en sitio.</p>
+            <div class="ap-service" id="ap-service" aria-live="polite"></div>
+            <section class="saved-scenarios">
+              <h4>Guardar escenario actual</h4>
+              <div class="scenario-save-controls">
+                <label class="sr-only" for="scenario-name">Nombre del escenario</label>
+                <input id="scenario-name" type="text" maxlength="60" placeholder="Ej. Oficina · AP en extremos">
+                <button class="add-obstacle" id="save-scenario" type="button" disabled>Guardar</button>
+              </div>
+              <p class="form-hint">Se guardan aquí en este navegador la configuración y sus indicadores; máximo 10 escenarios.</p>
+              <h4>Escenarios guardados</h4>
+              <div class="saved-scenario-list" id="saved-scenario-list"></div>
+              <button class="add-obstacle" id="compare-scenarios" type="button" disabled>Comparar seleccionados (0/2)</button>
+              <div class="scenario-comparison" id="scenario-comparison" aria-live="polite" hidden></div>
+            </section>
+            <section class="channel-recommendation" id="channel-recommendation" aria-live="polite" hidden>
+              <h4>Recomendación de canales</h4>
+              <p id="channel-recommendation-summary"></p>
+              <div id="channel-recommendation-list"></div>
+              <button class="add-obstacle" id="apply-channel-plan" type="button">Aplicar canales sugeridos</button>
+            </section>
+            <p class="model-note">SINR e interferencia por canal son estimaciones simplificadas; en 2.4 GHz se aproxima el solapamiento entre canales. No se modelan reflexión, difracción ni multipath, y no sustituye una medición en sitio.</p>
           </aside>
         </div>
       </div>
@@ -510,6 +564,7 @@
 
   <script>
     const bandButtons = document.querySelectorAll(".band-switch button");
+    const mapButtons = document.querySelectorAll(".map-switch button");
     const resetButton = document.querySelector(".scene-reset");
     const sceneElement = document.querySelector("#hero-scene");
     const sceneStatus = document.querySelector("#scene-status");
@@ -519,6 +574,18 @@
     const simulationForm = document.querySelector("#simulation-form");
     const obstacleList = document.querySelector("#obstacle-list");
     const addObstacleButton = document.querySelector("#add-obstacle");
+    const accessPointList = document.querySelector("#access-point-list");
+    const addAccessPointButton = document.querySelector("#add-access-point");
+    const optimizeChannelsButton = document.querySelector("#optimize-channels");
+    const channelRecommendation = document.querySelector("#channel-recommendation");
+    const channelRecommendationSummary = document.querySelector("#channel-recommendation-summary");
+    const channelRecommendationList = document.querySelector("#channel-recommendation-list");
+    const applyChannelPlanButton = document.querySelector("#apply-channel-plan");
+    const scenarioNameInput = document.querySelector("#scenario-name");
+    const saveScenarioButton = document.querySelector("#save-scenario");
+    const savedScenarioList = document.querySelector("#saved-scenario-list");
+    const compareScenariosButton = document.querySelector("#compare-scenarios");
+    const scenarioComparison = document.querySelector("#scenario-comparison");
     const formStatus = document.querySelector("#form-status");
     const obstacleMaterials = [
       ["concrete", "Concreto"],
@@ -540,6 +607,11 @@
       ["shelf", "Estantería"],
       ["cabinet", "Armario"]
     ];
+    const openingTypes = [
+      ["", "Sin abertura"],
+      ["door", "Puerta abierta (paso libre)"],
+      ["window", "Ventana (vidrio)"]
+    ];
     const initialObstacles = [
       { id: "partition-west", type: "wall", center: { x: 3.2, y: 1.25, z: 1.1 }, dimensions: { x: 0.12, y: 2.5, z: 2.2 }, material: "brick" },
       { id: "partition-north", type: "wall", center: { x: 3.2, y: 4.35, z: 1.1 }, dimensions: { x: 0.12, y: 1.7, z: 2.2 }, material: "brick" },
@@ -547,6 +619,11 @@
       { id: "partition-east-b", type: "wall", center: { x: 7.05, y: 3.5, z: 1.1 }, dimensions: { x: 1.9, y: 0.12, z: 2.2 }, material: "brick" }
     ];
     let obstacleCounter = 0;
+    let accessPointCounter = 0;
+    let selectedMapField = "rssi_dbm";
+    let pendingChannelRecommendation = null;
+    const SAVED_SCENARIOS_KEY = "wifimap.saved-scenarios.v1";
+    const MAX_SAVED_SCENARIOS = 10;
 
     function makeObstacleField(label, field, value, max) {
       const wrapper = document.createElement("div");
@@ -609,6 +686,82 @@
       typeLabel.append(typeSelect);
       typeWrapper.append(typeLabel);
       row.append(typeWrapper);
+      const openingWrapper = document.createElement("div");
+      openingWrapper.className = "form-field obstacle-material";
+      const openingLabel = document.createElement("label");
+      openingLabel.textContent = "Puerta o ventana";
+      const openingSelect = document.createElement("select");
+      openingSelect.dataset.field = "opening-type";
+      openingTypes.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        openingSelect.append(option);
+      });
+      openingSelect.value = source.opening?.type || "";
+      openingLabel.append(openingSelect);
+      openingWrapper.append(openingLabel);
+      row.append(openingWrapper);
+      const openingFields = document.createElement("div");
+      openingFields.className = "opening-fields";
+      const openingField = (label, field, value, min, max) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "form-field";
+        const fieldLabel = document.createElement("label");
+        fieldLabel.textContent = label;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = String(min);
+        input.max = String(max);
+        input.step = "any";
+        input.required = true;
+        input.dataset.openingField = field;
+        input.value = String(value);
+        fieldLabel.append(input);
+        wrapper.append(fieldLabel);
+        return wrapper;
+      };
+      const longSpan = Math.max(source.dimensions.x, source.dimensions.y);
+      const wallHeight = source.dimensions.z;
+      const openingIsWindow = source.opening?.type === "window";
+      const openingHeight = source.opening?.height_m ??
+        Math.min(openingIsWindow ? 1.2 : 2, wallHeight * (openingIsWindow ? 0.5 : 0.85));
+      const openingSill = source.opening?.sill_height_m ?? (openingIsWindow ? Math.min(0.9, wallHeight - openingHeight) : 0);
+      openingFields.append(
+        openingField("Ancho (m)", "width_m", source.opening?.width_m ?? Math.min(0.9, longSpan * 0.8), 0.05, longSpan),
+        openingField("Alto (m)", "height_m", openingHeight, 0.05, wallHeight),
+        openingField("Desplazamiento horizontal desde el centro (m)", "offset_m", source.opening?.offset_m ?? 0, -longSpan / 2, longSpan / 2),
+        openingField("Altura del antepecho (m)", "sill_height_m", openingSill, 0, wallHeight)
+      );
+      openingWrapper.after(openingFields);
+      const sillField = openingFields.querySelector('[data-opening-field="sill_height_m"]').closest(".form-field");
+      const updateOpeningControls = () => {
+        const isWall = typeSelect.value === "wall";
+        const hasOpening = isWall && openingSelect.value !== "";
+        openingWrapper.hidden = !isWall;
+        openingFields.hidden = !hasOpening;
+        openingFields.querySelectorAll("input").forEach((input) => {
+          input.disabled = !hasOpening;
+        });
+        const isWindow = openingSelect.value === "window";
+        sillField.hidden = !isWindow;
+        const sillInput = sillField.querySelector("input");
+        sillInput.disabled = !isWindow;
+        sillInput.required = isWindow;
+        if (!isWindow) sillInput.value = "0";
+      };
+      typeSelect.addEventListener("change", updateOpeningControls);
+      openingSelect.addEventListener("change", () => {
+        const isWindow = openingSelect.value === "window";
+        if (openingSelect.value) {
+          const height = Math.min(isWindow ? 1.2 : 2, wallHeight * (isWindow ? 0.5 : 0.85));
+          openingFields.querySelector('[data-opening-field="height_m"]').value = String(height);
+          openingFields.querySelector('[data-opening-field="sill_height_m"]').value =
+            String(isWindow ? Math.min(0.9, wallHeight - height) : 0);
+        }
+        updateOpeningControls();
+      });
+      updateOpeningControls();
       const positionFields = document.createElement("div");
       positionFields.className = "field-grid obstacle-fields";
       positionFields.append(
@@ -644,6 +797,136 @@
       addObstacleButton.disabled = obstacleList.children.length >= 20;
     }
 
+    function addAccessPointRow(source = null) {
+      if (accessPointList.children.length >= 8) return;
+      accessPointCounter += 1;
+      const accessPoint = source || {
+        id: `ap-${accessPointCounter}`,
+        position: { x: 3.95, y: 2.65, z: 0.65 },
+        transmit_power_dbm: 20
+      };
+      const row = document.createElement("div");
+      row.className = "obstacle-row";
+      row.dataset.accessPointId = accessPoint.id || `ap-${accessPointCounter}`;
+      const title = document.createElement("div");
+      title.className = "obstacle-label";
+      const titleText = document.createElement("span");
+      title.append(titleText);
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "obstacle-remove";
+      remove.textContent = "Quitar";
+      title.append(remove);
+      row.append(title);
+      const makeAccessPointField = (label, field, value, min, max) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "form-field";
+        const fieldLabel = document.createElement("label");
+        fieldLabel.textContent = label;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.min = String(min);
+        input.max = String(max);
+        input.step = "any";
+        input.required = true;
+        input.dataset.accessPointField = field;
+        input.value = String(value);
+        fieldLabel.append(input);
+        wrapper.append(fieldLabel);
+        return wrapper;
+      };
+      const position = accessPoint.position || accessPoint;
+      const positions = document.createElement("div");
+      positions.className = "field-grid obstacle-fields";
+      positions.append(
+        makeAccessPointField("Posición X (m)", "x", position.x, 0, 100),
+        makeAccessPointField("Posición Y (m)", "y", position.y, 0, 100),
+        makeAccessPointField("Altura Z (m)", "z", position.z, 0, 30)
+      );
+      const power = document.createElement("div");
+      power.className = "field-grid obstacle-fields";
+      power.append(
+        makeAccessPointField("Potencia de transmisión (dBm)", "transmit_power_dbm", accessPoint.transmit_power_dbm ?? 20, -10, 40)
+      );
+      const radioSettings = document.createElement("div");
+      radioSettings.className = "field-grid obstacle-fields";
+      const makeRadioSelect = (label, field, options, value) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "form-field";
+        const fieldLabel = document.createElement("label");
+        fieldLabel.textContent = label;
+        const select = document.createElement("select");
+        select.dataset.accessPointField = field;
+        select.required = true;
+        options.forEach(([optionValue, optionLabel]) => {
+          const option = document.createElement("option");
+          option.value = optionValue;
+          option.textContent = optionLabel;
+          select.append(option);
+        });
+        select.value = String(value);
+        fieldLabel.append(select);
+        wrapper.append(fieldLabel);
+        return select;
+      };
+      const bandSelect = makeRadioSelect(
+        "Banda",
+        "frequency",
+        [["2.4", "2.4 GHz"], ["5", "5 GHz"]],
+        accessPoint.frequency ?? "2.4"
+      );
+      const channelSelect = makeRadioSelect("Canal", "channel", [], accessPoint.channel ?? 1);
+      const channelsForBand = (band) => band === "2.4"
+        ? Array.from({ length: 13 }, (_, index) => [String(index + 1), `Canal ${index + 1}`])
+        : [36, 40, 44, 48, 149, 153, 157, 161, 165].map((channel) => [String(channel), `Canal ${channel}`]);
+      const updateChannels = (preferredChannel) => {
+        const options = channelsForBand(bandSelect.value);
+        channelSelect.replaceChildren(...options.map(([value, label]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = label;
+          return option;
+        }));
+        const preferred = String(preferredChannel ?? "");
+        channelSelect.value = options.some(([value]) => value === preferred)
+          ? preferred
+          : options[0][0];
+      };
+      updateChannels(accessPoint.channel);
+      bandSelect.addEventListener("change", () => updateChannels());
+      radioSettings.append(bandSelect.closest(".form-field"), channelSelect.closest(".form-field"));
+      row.append(positions, power, radioSettings);
+      accessPointList.append(row);
+      Array.from(accessPointList.children).forEach((item, index) => {
+        item.querySelector(".obstacle-label span").textContent = `Punto de acceso ${index + 1}`;
+        const button = item.querySelector(".obstacle-remove");
+        button.setAttribute("aria-label", `Quitar punto de acceso ${index + 1}`);
+        button.disabled = accessPointList.children.length <= 1;
+      });
+      addAccessPointButton.disabled = accessPointList.children.length >= 8;
+    }
+
+    addAccessPointRow({ id: "ap-1", position: { x: 3.95, y: 2.65, z: 0.65 }, transmit_power_dbm: 20 });
+    addAccessPointButton.addEventListener("click", () => {
+      addAccessPointRow({
+        id: `ap-${accessPointCounter + 1}`,
+        position: { x: 3.95, y: 2.65, z: 1.2 },
+        transmit_power_dbm: 20
+      });
+    });
+    accessPointList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest(".obstacle-remove");
+      if (!removeButton || removeButton.disabled) return;
+      removeButton.closest(".obstacle-row").remove();
+      Array.from(accessPointList.children).forEach((row, index) => {
+        row.querySelector(".obstacle-label span").textContent = `Punto de acceso ${index + 1}`;
+        const button = row.querySelector(".obstacle-remove");
+        button.setAttribute("aria-label", `Quitar punto de acceso ${index + 1}`);
+        button.disabled = accessPointList.children.length <= 1;
+      });
+      addAccessPointButton.disabled = accessPointList.children.length >= 8;
+    });
+
     initialObstacles.forEach((obstacle) => addObstacleRow(obstacle));
     addObstacleButton.addEventListener("click", () => addObstacleRow());
     obstacleList.addEventListener("click", (event) => {
@@ -659,11 +942,22 @@
 
     function readScenario(band) {
       const number = (selector) => Number(document.querySelector(selector).value);
+      const accessPoints = Array.from(accessPointList.querySelectorAll(".obstacle-row"), (row) => {
+        const value = (field) => Number(row.querySelector(`[data-access-point-field="${field}"]`).value);
+        return {
+          id: row.dataset.accessPointId,
+          position: { x: value("x"), y: value("y"), z: value("z") },
+          transmit_power_dbm: value("transmit_power_dbm"),
+          frequency: row.querySelector('[data-access-point-field="frequency"]').value,
+          channel: value("channel")
+        };
+      });
       return {
         dimensions: { x: number("#room-x"), y: number("#room-y"), z: number("#room-z") },
-        router: { x: number("#router-x"), y: number("#router-y"), z: number("#router-z") },
+        router: accessPoints[0].position,
+        access_points: accessPoints,
         frequency: band,
-        transmit_power_dbm: 20,
+        transmit_power_dbm: accessPoints[0].transmit_power_dbm,
         transmit_antenna_gain_dbi: 0,
         receive_antenna_gain_dbi: 0,
         bandwidth_hz: 20000000,
@@ -671,21 +965,54 @@
         voxel_size_m: number("#voxel-size"),
         obstacles: Array.from(obstacleList.querySelectorAll(".obstacle-row"), (row) => {
           const value = (field) => Number(row.querySelector(`[data-field="${field}"]`).value);
-          return {
+            const obstacle = {
             id: row.dataset.obstacleId,
             type: row.querySelector('[data-field="type"]').value,
             center: { x: value("x"), y: value("y"), z: value("z") },
             dimensions: { x: value("size-x"), y: value("size-y"), z: value("size-z") },
             material: row.querySelector('[data-field="material"]').value
           };
-        })
-      };
+            const openingType = row.querySelector('[data-field="opening-type"]').value;
+            if (obstacle.type === "wall" && openingType) {
+              const openingValue = (field) => Number(row.querySelector(`[data-opening-field="${field}"]`).value);
+              obstacle.opening = {
+                type: openingType,
+                width_m: openingValue("width_m"),
+                height_m: openingValue("height_m"),
+                offset_m: openingValue("offset_m"),
+                sill_height_m: openingType === "window" ? openingValue("sill_height_m") : 0
+              };
+            }
+            return obstacle;
+          })
+        };
     }
 
     function validateScenario(scenario) {
-      const { dimensions, router, obstacles, voxel_size_m: voxelSize } = scenario;
-      if (router.x > dimensions.x || router.y > dimensions.y || router.z > dimensions.z) {
-        return "El router debe quedar dentro de las dimensiones del espacio.";
+      const { dimensions, access_points: accessPoints, obstacles, voxel_size_m: voxelSize } = scenario;
+      if (!accessPoints.length || accessPoints.length > 8) {
+        return "El escenario debe tener entre 1 y 8 puntos de acceso.";
+      }
+      if (!accessPoints.some((accessPoint) => accessPoint.frequency === scenario.frequency)) {
+        return `Configura al menos un punto de acceso en ${scenario.frequency} GHz para calcular esta banda.`;
+      }
+      const accessPointIds = new Set();
+      for (const accessPoint of accessPoints) {
+        if (accessPointIds.has(accessPoint.id)) {
+          return "Los identificadores de puntos de acceso deben ser únicos.";
+        }
+        accessPointIds.add(accessPoint.id);
+        const validChannels = accessPoint.frequency === "2.4"
+          ? accessPoint.channel >= 1 && accessPoint.channel <= 13
+          : [36, 40, 44, 48, 149, 153, 157, 161, 165].includes(accessPoint.channel);
+        if (!validChannels) {
+          return `El canal ${accessPoint.channel} no es válido para la banda ${accessPoint.frequency} GHz.`;
+        }
+        for (const axis of ["x", "y", "z"]) {
+          if (accessPoint.position[axis] < 0 || accessPoint.position[axis] > dimensions[axis]) {
+            return `El punto de acceso «${accessPoint.id}» debe quedar dentro del espacio.`;
+          }
+        }
       }
       for (const obstacle of obstacles) {
         for (const axis of ["x", "y", "z"]) {
@@ -694,10 +1021,35 @@
             return `El obstáculo «${obstacle.id}» excede el espacio en el eje ${axis.toUpperCase()}.`;
           }
         }
-        if (["x", "y", "z"].every((axis) =>
-          Math.abs(router[axis] - obstacle.center[axis]) < obstacle.dimensions[axis] / 2
-        )) {
-          return "El router no puede quedar dentro de un obstáculo.";
+        for (const accessPoint of accessPoints) {
+          const position = accessPoint.position;
+          if (["x", "y", "z"].every((axis) =>
+            Math.abs(position[axis] - obstacle.center[axis]) < obstacle.dimensions[axis] / 2
+          )) {
+            const opening = obstacle.opening;
+            const longAxis = obstacle.dimensions.x >= obstacle.dimensions.y ? "x" : "y";
+            const insideOpening = obstacle.type === "wall" && opening &&
+              Math.abs(obstacle.center[longAxis] - position[longAxis] + opening.offset_m) < opening.width_m / 2 &&
+              position.z > obstacle.center.z - obstacle.dimensions.z / 2 + opening.sill_height_m &&
+              position.z < obstacle.center.z - obstacle.dimensions.z / 2 + opening.sill_height_m + opening.height_m;
+            if (!insideOpening || opening.type !== "door") {
+              return `El punto de acceso «${accessPoint.id}» no puede quedar dentro de un obstáculo sólido.`;
+            }
+          }
+        }
+        if (obstacle.opening) {
+          const { opening } = obstacle;
+          const longSpan = Math.max(obstacle.dimensions.x, obstacle.dimensions.y);
+          if (Math.min(obstacle.dimensions.x, obstacle.dimensions.y) >= longSpan * 0.25) {
+            return `La pared «${obstacle.id}» debe ser alargada y delgada para agregar una abertura.`;
+          }
+          if (opening.width_m > longSpan ||
+              Math.abs(opening.offset_m) + opening.width_m / 2 > longSpan / 2) {
+            return `La abertura de «${obstacle.id}» debe quedar dentro de los extremos de la pared.`;
+          }
+          if (opening.sill_height_m + opening.height_m > obstacle.dimensions.z) {
+            return `La abertura de «${obstacle.id}» debe quedar dentro de la altura de la pared.`;
+          }
         }
       }
       const voxelCount = Math.ceil(dimensions.x / voxelSize - 1e-10) *
@@ -1037,7 +1389,97 @@
             group.position.copy(position);
             obstacleGeometry.add(group);
 
-            if (["table", "sofa", "shelf", "cabinet", "column"].includes(obstacle.type)) {
+            if (obstacle.type === "wall" && obstacle.opening) {
+              const opening = obstacle.opening;
+              const thinAxis = dimensions.x <= dimensions.y ? "x" : "y";
+              const wallThickness = Math.min(dimensions.x, dimensions.y);
+              const wallLength = Math.max(dimensions.x, dimensions.y);
+              const openingLeft = opening.offset_m - opening.width_m / 2;
+              const openingRight = opening.offset_m + opening.width_m / 2;
+              const openingBottom = -dimensions.z / 2 + opening.sill_height_m;
+              const openingTop = openingBottom + opening.height_m;
+              const addWallPiece = (length, height, alongOffset, verticalOffset, color = obstacleColors[obstacle.material], style = materialStyle, options = pbrOptions) => {
+                if (length <= 0.005 || height <= 0.005) return;
+                const piece = new THREE.Mesh(
+                  thinAxis === "x"
+                    ? new THREE.BoxGeometry(wallThickness, height, length)
+                    : new THREE.BoxGeometry(length, height, wallThickness),
+                  createPbrMaterial(style, { ...options, color }, Math.max(length, wallThickness), height)
+                );
+                piece.position.set(
+                  thinAxis === "x" ? 0 : alongOffset,
+                  verticalOffset,
+                  thinAxis === "x" ? alongOffset : 0
+                );
+                piece.castShadow = true;
+                piece.receiveShadow = true;
+                group.add(piece);
+              };
+
+              const leftWidth = openingLeft + wallLength / 2;
+              const rightWidth = wallLength / 2 - openingRight;
+              addWallPiece(leftWidth, dimensions.z, (-wallLength / 2 + openingLeft) / 2, 0);
+              addWallPiece(rightWidth, dimensions.z, (openingRight + wallLength / 2) / 2, 0);
+              addWallPiece(
+                opening.width_m,
+                Math.max(0, openingBottom + dimensions.z / 2),
+                opening.offset_m,
+                (-dimensions.z / 2 + openingBottom) / 2
+              );
+              addWallPiece(
+                opening.width_m,
+                Math.max(0, dimensions.z / 2 - openingTop),
+                opening.offset_m,
+                (openingTop + dimensions.z / 2) / 2
+              );
+
+              const frameWidth = Math.min(0.07, Math.max(0.035, wallThickness * 0.55));
+              const frameOptions = {
+                color: 0x80634c,
+                roughness: 0.68,
+                metalness: 0,
+                transparent: false,
+                opacity: 1,
+                depthWrite: true,
+                side: THREE.DoubleSide
+              };
+              addWallPiece(frameWidth, opening.height_m, openingLeft - frameWidth / 2, openingBottom + opening.height_m / 2, 0x80634c, "wood", frameOptions);
+              addWallPiece(frameWidth, opening.height_m, openingRight + frameWidth / 2, openingBottom + opening.height_m / 2, 0x80634c, "wood", frameOptions);
+              addWallPiece(opening.width_m + frameWidth * 2, frameWidth, opening.offset_m, openingTop + frameWidth / 2, 0x80634c, "wood", frameOptions);
+
+              if (opening.type === "window") {
+                const paneThickness = Math.max(0.008, Math.min(0.025, wallThickness * 0.2));
+                const pane = new THREE.Mesh(
+                  thinAxis === "x"
+                    ? new THREE.BoxGeometry(paneThickness, opening.height_m, opening.width_m)
+                    : new THREE.BoxGeometry(opening.width_m, opening.height_m, paneThickness),
+                  createPbrMaterial("glass", {
+                    color: 0x94c3ca,
+                    roughness: 0.16,
+                    metalness: 0,
+                    transparent: true,
+                    opacity: 0.32,
+                    depthWrite: false,
+                    side: THREE.DoubleSide
+                  }, opening.width_m, opening.height_m)
+                );
+                pane.position.set(
+                  thinAxis === "x" ? 0 : opening.offset_m,
+                  openingBottom + opening.height_m / 2,
+                  thinAxis === "x" ? opening.offset_m : 0
+                );
+                pane.renderOrder = 1;
+                group.add(pane);
+                addWallPiece(opening.width_m, frameWidth, opening.offset_m, openingBottom - frameWidth / 2, 0x80634c, "wood", frameOptions);
+              }
+
+              const proxy = new THREE.LineSegments(
+                new THREE.EdgesGeometry(new THREE.BoxGeometry(dimensions.x, dimensions.z, dimensions.y)),
+                new THREE.LineBasicMaterial({ color: 0xf7f1e8, transparent: true, opacity: 0.45 })
+              );
+              proxy.renderOrder = 2;
+              group.add(proxy);
+            } else if (["table", "sofa", "shelf", "cabinet", "column"].includes(obstacle.type)) {
               const addPart = (width, height, depth, x, y, z, color, style = "wood", roughness = 0.76) => {
                 if (width <= 0.01 || height <= 0.01 || depth <= 0.01) return;
                 const part = new THREE.Mesh(
@@ -1207,6 +1649,9 @@
         );
         led.position.set(0, 0.17, 0.22);
         router.add(led);
+        router.visible = false;
+        const routerMarkers = new THREE.Group();
+        model.add(routerMarkers);
 
         const coverageMaterial = new THREE.ShaderMaterial({
           transparent: true,
@@ -1277,15 +1722,42 @@
           });
         }
 
+        function setMapField(field) {
+          selectedMapField = field;
+          document.querySelector(".scene-title").textContent =
+            field === "sinr_db" ? "Mapa SINR" : "Mapa RSSI";
+          mapButtons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.mapField === field));
+          });
+          if (lastSimulationResult && lastSimulationRequest) {
+            displaySimulation(lastSimulationResult, lastSimulationRequest);
+          }
+        }
+
         function updateScene(scenario) {
           rebuildRoom(scenario.dimensions);
           rebuildObstacles(scenario.obstacles);
-          const routerX = scenario.router.x - scenario.dimensions.x / 2;
-          const routerZ = scenario.router.y - scenario.dimensions.y / 2;
-          const routerY = scenario.router.z - 0.14;
-          router.position.set(routerX, routerY, routerZ);
-          coverage.position.set(routerX, scenario.router.z + 0.025, routerZ);
-          ripples.forEach((ripple) => ripple.position.set(routerX, scenario.router.z + 0.045, routerZ));
+          routerMarkers.clear();
+          scenario.access_points
+            .filter((accessPoint) => accessPoint.frequency === scenario.frequency)
+            .forEach((accessPoint) => {
+            const marker = router.clone(true);
+            marker.visible = true;
+            marker.userData.accessPointId = accessPoint.id;
+            marker.position.set(
+              accessPoint.position.x - scenario.dimensions.x / 2,
+              accessPoint.position.z - 0.14,
+              accessPoint.position.y - scenario.dimensions.y / 2
+            );
+            routerMarkers.add(marker);
+            });
+          const primaryAccessPoint = scenario.access_points.find(
+            (accessPoint) => accessPoint.frequency === scenario.frequency
+          ).position;
+          const routerX = primaryAccessPoint.x - scenario.dimensions.x / 2;
+          const routerZ = primaryAccessPoint.y - scenario.dimensions.y / 2;
+          coverage.position.set(routerX, primaryAccessPoint.z + 0.025, routerZ);
+          ripples.forEach((ripple) => ripple.position.set(routerX, primaryAccessPoint.z + 0.045, routerZ));
           const center = new THREE.Vector3(model.position.x, scenario.dimensions.z / 2, 0);
           const scale = Math.max(scenario.dimensions.x, scenario.dimensions.y, scenario.dimensions.z, 4);
           keyLight.position.set(center.x - scale, center.y + scale * 2, center.z + scale);
@@ -1338,12 +1810,19 @@
         setBand(selectedBand);
 
         function signalColor(dbm) {
-          const stops = [
-            { value: -90, color: [135, 49, 56] },
-            { value: -75, color: [231, 111, 81] },
-            { value: -60, color: [214, 194, 161] },
-            { value: -45, color: [135, 169, 146] }
-          ];
+          const stops = selectedMapField === "sinr_db"
+            ? [
+                { value: -5, color: [135, 49, 56] },
+                { value: 0, color: [231, 111, 81] },
+                { value: 10, color: [214, 194, 161] },
+                { value: 25, color: [135, 169, 146] }
+              ]
+            : [
+                { value: -90, color: [135, 49, 56] },
+                { value: -75, color: [231, 111, 81] },
+                { value: -60, color: [214, 194, 161] },
+                { value: -45, color: [135, 169, 146] }
+              ];
           const value = THREE.MathUtils.clamp(dbm, stops[0].value, stops[stops.length - 1].value);
           const nextIndex = stops.findIndex((stop) => stop.value >= value);
           const lower = stops[Math.max(0, nextIndex - 1)];
@@ -1352,9 +1831,9 @@
           return lower.color.map((channel, index) => Math.round(channel + (upper.color[index] - channel) * ratio));
         }
 
-        function makeHeatmapTexture(rssiLayer, validLayer) {
-          const height = rssiLayer.length;
-          const width = rssiLayer[0].length;
+        function makeHeatmapTexture(signalLayer, validLayer) {
+          const height = signalLayer.length;
+          const width = signalLayer[0].length;
           const canvas = document.createElement("canvas");
           canvas.width = width;
           canvas.height = height;
@@ -1364,7 +1843,7 @@
             for (let x = 0; x < width; x += 1) {
               const index = ((height - 1 - y) * width + x) * 4;
               if (!validLayer[y][x]) continue;
-              const [red, green, blue] = signalColor(rssiLayer[y][x]);
+              const [red, green, blue] = signalColor(signalLayer[y][x]);
               image.data[index] = red;
               image.data[index + 1] = green;
               image.data[index + 2] = blue;
@@ -1379,8 +1858,15 @@
           return texture;
         }
 
+        let lastSimulationResult = null;
+        let lastSimulationRequest = null;
+        let currentSimulationStale = true;
+        let selectedSavedScenarioIds = new Set();
         function displaySimulation(result, request) {
           const { grid, fields, statistics } = result;
+          lastSimulationResult = result;
+          lastSimulationRequest = request;
+          currentSimulationStale = false;
           const selectedSlices = [...new Set([0, Math.floor(grid.z_m.length / 2), grid.z_m.length - 1])];
           clearHeatmap();
           coverage.visible = false;
@@ -1390,7 +1876,7 @@
 
           selectedSlices.forEach((sliceIndex) => {
             const texture = makeHeatmapTexture(
-              fields.rssi_dbm_zyx[sliceIndex],
+              fields[`${selectedMapField}_zyx`][sliceIndex],
               fields.valid_zyx[sliceIndex]
             );
             const slice = new THREE.Mesh(
@@ -1412,19 +1898,304 @@
 
           const average = statistics.average_rssi_dbm.toFixed(1);
           const useful = statistics.useful_coverage_percent.toFixed(1);
-          sceneStatus.textContent = `${result.frequency_ghz} GHz · RSSI promedio ${average} dBm · cobertura útil ${useful}% (voxeles válidos)`;
+          const activeAccessPoints = result.access_points;
+          sceneStatus.textContent = `${result.frequency_ghz} GHz · ${activeAccessPoints.length} AP · SINR promedio ${statistics.average_sinr_db.toFixed(1)} dB · cobertura útil ${useful}%`;
           document.querySelector("#result-rssi").textContent = `${average} dBm`;
           document.querySelector("#result-coverage").textContent = `${useful}%`;
-          document.querySelector("#result-snr").textContent = `${statistics.average_snr_db.toFixed(1)} dB`;
+          document.querySelector("#result-snr").textContent = `${statistics.average_sinr_db.toFixed(1)} dB`;
           document.querySelector("#result-voxels").textContent = new Intl.NumberFormat("es").format(
             grid.shape_zyx.reduce((total, size) => total * size, 1)
           );
+          const apService = document.querySelector("#ap-service");
+          apService.replaceChildren(...activeAccessPoints.map((accessPoint) => {
+            const row = document.createElement("div");
+            row.className = "ap-service-row";
+            const name = document.createElement("span");
+            name.textContent = accessPoint.id;
+            const servedVoxels = statistics.serving_ap_voxels[accessPoint.id] || 0;
+            const share = statistics.valid_voxels
+              ? (servedVoxels / statistics.valid_voxels * 100).toFixed(1)
+              : "0.0";
+            const value = document.createElement("strong");
+            value.textContent = `${share}% · canal ${accessPoint.channel} · ${accessPoint.transmit_power_dbm} dBm`;
+            row.append(name, value);
+            return row;
+          }));
           document.querySelector("#result-message").textContent =
-            `${result.frequency_ghz} GHz · espacio ${request.dimensions.x} × ${request.dimensions.y} × ${request.dimensions.z} m · ${request.obstacles.length} obstáculos`;
-          formStatus.textContent = "Estimación actualizada. La escena muestra tres cortes del mapa RSSI.";
+            `${result.frequency_ghz} GHz · ${activeAccessPoints.length} AP · espacio ${request.dimensions.x} × ${request.dimensions.y} × ${request.dimensions.z} m · ${request.obstacles.length} obstáculos`;
+          formStatus.textContent = `Estimación actualizada. La escena muestra tres cortes del mapa ${selectedMapField === "sinr_db" ? "SINR" : "RSSI"}.`;
           formStatus.dataset.state = "success";
+          updateSaveScenarioButton();
           renderer.render(scene, camera);
         }
+
+        function readSavedScenarios() {
+          let scenarios;
+          try {
+            scenarios = JSON.parse(localStorage.getItem(SAVED_SCENARIOS_KEY) || "[]");
+          } catch (error) {
+            throw new Error("No se pudieron leer los escenarios guardados de este navegador.", { cause: error });
+          }
+          if (!Array.isArray(scenarios) || scenarios.some((scenario) =>
+            !scenario ||
+            typeof scenario.id !== "string" ||
+            typeof scenario.name !== "string" ||
+            !scenario.request ||
+            !scenario.result ||
+            !Number.isFinite(scenario.result.average_rssi_dbm) ||
+            !Number.isFinite(scenario.result.useful_coverage_percent) ||
+            !Number.isFinite(scenario.result.average_sinr_db) ||
+            !Number.isFinite(scenario.result.voxel_count) ||
+            !Array.isArray(scenario.result.access_points)
+          )) {
+            throw new Error("Los escenarios guardados tienen un formato inválido. Elimina los datos guardados de WiFiMap y vuelve a intentarlo.");
+          }
+          return scenarios;
+        }
+
+        function writeSavedScenarios(scenarios) {
+          try {
+            localStorage.setItem(SAVED_SCENARIOS_KEY, JSON.stringify(scenarios));
+          } catch (error) {
+            throw new Error("No se pudieron guardar los escenarios. Revisa el almacenamiento disponible en este navegador.", { cause: error });
+          }
+        }
+
+        function updateSaveScenarioButton() {
+          const canSave = Boolean(lastSimulationResult && lastSimulationRequest) &&
+            !currentSimulationStale &&
+            scenarioNameInput.value.trim().length > 0;
+          try {
+            saveScenarioButton.disabled = !canSave || readSavedScenarios().length >= MAX_SAVED_SCENARIOS;
+          } catch {
+            saveScenarioButton.disabled = true;
+          }
+        }
+
+        function renderSavedScenarios() {
+          const scenarios = readSavedScenarios();
+          const scenarioIds = new Set(scenarios.map((scenario) => scenario.id));
+          selectedSavedScenarioIds = new Set(
+            [...selectedSavedScenarioIds].filter((id) => scenarioIds.has(id))
+          );
+          savedScenarioList.replaceChildren();
+          if (scenarios.length === 0) {
+            const emptyState = document.createElement("p");
+            emptyState.className = "form-hint";
+            emptyState.textContent = "Todavía no hay escenarios guardados. Calcula y guarda una configuración para compararla después.";
+            savedScenarioList.append(emptyState);
+          }
+          scenarios.forEach((scenario) => {
+            const row = document.createElement("div");
+            row.className = "saved-scenario-row";
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.checked = selectedSavedScenarioIds.has(scenario.id);
+            checkbox.setAttribute("aria-label", `Seleccionar ${scenario.name} para comparar`);
+            checkbox.disabled = !checkbox.checked && selectedSavedScenarioIds.size >= 2;
+            checkbox.addEventListener("change", () => {
+              if (checkbox.checked) {
+                selectedSavedScenarioIds.add(scenario.id);
+              } else {
+                selectedSavedScenarioIds.delete(scenario.id);
+              }
+              scenarioComparison.hidden = true;
+              renderSavedScenarios();
+            });
+            const label = document.createElement("label");
+            const name = document.createElement("span");
+            name.textContent = scenario.name;
+            const meta = document.createElement("small");
+            meta.textContent = `${scenario.result.frequency_ghz} GHz · SINR ${scenario.result.average_sinr_db.toFixed(1)} dB · ${new Date(scenario.created_at).toLocaleString("es")}`;
+            label.append(name, meta);
+            const loadButton = document.createElement("button");
+            loadButton.type = "button";
+            loadButton.textContent = "Cargar";
+            loadButton.setAttribute("aria-label", `Cargar escenario ${scenario.name}`);
+            loadButton.addEventListener("click", () => {
+              restoreSavedScenario(scenario).catch((error) => {
+                console.error("No se pudo cargar el escenario guardado.", error);
+                formStatus.textContent = error.message;
+                formStatus.dataset.state = "error";
+              });
+            });
+            const deleteButton = document.createElement("button");
+            deleteButton.type = "button";
+            deleteButton.textContent = "Eliminar";
+            deleteButton.setAttribute("aria-label", `Eliminar escenario ${scenario.name}`);
+            deleteButton.addEventListener("click", () => {
+              try {
+                writeSavedScenarios(readSavedScenarios().filter((item) => item.id !== scenario.id));
+                selectedSavedScenarioIds.delete(scenario.id);
+                scenarioComparison.hidden = true;
+                renderSavedScenarios();
+                updateSaveScenarioButton();
+              } catch (error) {
+                formStatus.textContent = error.message;
+                formStatus.dataset.state = "error";
+              }
+            });
+            row.append(checkbox, label, loadButton, deleteButton);
+            savedScenarioList.append(row);
+          });
+          compareScenariosButton.textContent =
+            `Comparar seleccionados (${selectedSavedScenarioIds.size}/2)`;
+          compareScenariosButton.disabled = selectedSavedScenarioIds.size !== 2;
+          updateSaveScenarioButton();
+        }
+
+        function saveCurrentScenario() {
+          if (!lastSimulationResult || !lastSimulationRequest || currentSimulationStale) {
+            throw new Error("Calcula de nuevo el escenario después de cambiar su configuración para poder guardarlo.");
+          }
+          const name = scenarioNameInput.value.trim();
+          if (!name) throw new Error("Escribe un nombre para el escenario.");
+          const scenarios = readSavedScenarios();
+          if (scenarios.length >= MAX_SAVED_SCENARIOS) {
+            throw new Error("Ya hay 10 escenarios guardados. Elimina uno antes de guardar otro.");
+          }
+          const statistics = lastSimulationResult.statistics;
+          const scenario = {
+            id: crypto.randomUUID(),
+            name,
+            created_at: new Date().toISOString(),
+            request: lastSimulationRequest,
+            result: {
+              frequency_ghz: lastSimulationResult.frequency_ghz,
+              average_rssi_dbm: statistics.average_rssi_dbm,
+              useful_coverage_percent: statistics.useful_coverage_percent,
+              average_sinr_db: statistics.average_sinr_db,
+              voxel_count: lastSimulationResult.grid.shape_zyx.reduce((total, size) => total * size, 1),
+              access_points: lastSimulationResult.access_points.map((accessPoint) => ({
+                id: accessPoint.id,
+                channel: accessPoint.channel,
+                frequency_ghz: accessPoint.frequency_ghz
+              }))
+            }
+          };
+          writeSavedScenarios([...scenarios, scenario]);
+          scenarioNameInput.value = "";
+          renderSavedScenarios();
+          formStatus.textContent = `Escenario «${name}» guardado en este navegador.`;
+          formStatus.dataset.state = "success";
+        }
+
+        function renderScenarioComparison(first, second) {
+          const metrics = [
+            ["RSSI promedio (dBm)", "average_rssi_dbm", 1],
+            ["Cobertura útil (%)", "useful_coverage_percent", 1],
+            ["SINR promedio (dB)", "average_sinr_db", 1],
+            ["Vóxeles", "voxel_count", 0]
+          ];
+          const table = document.createElement("table");
+          const head = document.createElement("thead");
+          const headerRow = document.createElement("tr");
+          ["Indicador", first.name, second.name, "Diferencia"].forEach((text) => {
+            const cell = document.createElement("th");
+            cell.textContent = text;
+            headerRow.append(cell);
+          });
+          head.append(headerRow);
+          const body = document.createElement("tbody");
+          metrics.forEach(([label, key, decimals]) => {
+            const row = document.createElement("tr");
+            const values = [first.result[key], second.result[key]];
+            const cells = [
+              label,
+              decimals ? values[0].toFixed(decimals) : new Intl.NumberFormat("es").format(values[0]),
+              decimals ? values[1].toFixed(decimals) : new Intl.NumberFormat("es").format(values[1]),
+              `${values[1] - values[0] > 0 ? "+" : ""}${decimals ? (values[1] - values[0]).toFixed(decimals) : new Intl.NumberFormat("es").format(values[1] - values[0])}`
+            ];
+            cells.forEach((text) => {
+              const cell = document.createElement("td");
+              cell.textContent = text;
+              row.append(cell);
+            });
+            body.append(row);
+          });
+          const firstChannels = first.result.access_points
+            .map((accessPoint) => `${accessPoint.id}: ${accessPoint.channel} (${accessPoint.frequency_ghz} GHz)`)
+            .join(", ");
+          const secondChannels = second.result.access_points
+            .map((accessPoint) => `${accessPoint.id}: ${accessPoint.channel} (${accessPoint.frequency_ghz} GHz)`)
+            .join(", ");
+          const channelRow = document.createElement("tr");
+          [ "Canales por AP", firstChannels, secondChannels, "—" ].forEach((text) => {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            channelRow.append(cell);
+          });
+          body.append(channelRow);
+          table.append(head, body);
+          scenarioComparison.replaceChildren(table);
+          scenarioComparison.hidden = false;
+        }
+
+        async function restoreSavedScenario(scenario) {
+          const request = scenario.request;
+          for (const axis of ["x", "y", "z"]) {
+            document.querySelector(`#room-${axis}`).value = String(request.dimensions[axis]);
+          }
+          const accessPoints = request.access_points || [{
+            id: "ap-1",
+            position: request.router,
+            transmit_power_dbm: request.transmit_power_dbm,
+            frequency: request.frequency,
+            channel: request.frequency === "5" ? 36 : 1
+          }];
+          accessPointList.replaceChildren();
+          accessPointCounter = 0;
+          accessPoints.forEach((accessPoint) => addAccessPointRow(accessPoint));
+          obstacleList.replaceChildren();
+          obstacleCounter = 0;
+          (request.obstacles || []).forEach((obstacle) => addObstacleRow(obstacle));
+          document.querySelector("#voxel-size").value = String(request.voxel_size_m);
+          const band = String(scenario.result.frequency_ghz);
+          setBand(band);
+          channelRecommendation.hidden = true;
+          pendingChannelRecommendation = null;
+          formStatus.textContent = `Escenario «${scenario.name}» cargado. Recalculando con la configuración guardada...`;
+          formStatus.dataset.state = "";
+          await runSimulation(band);
+        }
+
+        saveScenarioButton.addEventListener("click", () => {
+          try {
+            saveCurrentScenario();
+          } catch (error) {
+            formStatus.textContent = error.message;
+            formStatus.dataset.state = "error";
+          }
+        });
+        scenarioNameInput.addEventListener("input", updateSaveScenarioButton);
+        compareScenariosButton.addEventListener("click", () => {
+          try {
+            if (selectedSavedScenarioIds.size !== 2) {
+              throw new Error("Selecciona exactamente dos escenarios para compararlos.");
+            }
+            const selected = readSavedScenarios().filter((scenario) =>
+              selectedSavedScenarioIds.has(scenario.id)
+            );
+            if (selected.length !== 2) {
+              throw new Error("Uno de los escenarios seleccionados ya no está disponible.");
+            }
+            renderScenarioComparison(selected[0], selected[1]);
+          } catch (error) {
+            formStatus.textContent = error.message;
+            formStatus.dataset.state = "error";
+          }
+        });
+        try {
+          renderSavedScenarios();
+        } catch (error) {
+          console.error("No se pudieron cargar los escenarios guardados.", error);
+          formStatus.textContent = error.message;
+          formStatus.dataset.state = "error";
+        }
+
+        mapButtons.forEach((button) => {
+          button.addEventListener("click", () => setMapField(button.dataset.mapField));
+        });
 
         let requestSequence = 0;
         async function runSimulation(band) {
@@ -1439,6 +2210,8 @@
             throw new Error("La API de Python todavía no está conectada a esta página de GitHub Pages.");
           }
           const sequence = ++requestSequence;
+          currentSimulationStale = true;
+          updateSaveScenarioButton();
           updateScene(request);
           clearHeatmap();
           sceneStatus.textContent = `Calculando cobertura para ${band} GHz...`;
@@ -1472,6 +2245,100 @@
             throw error;
           }
         }
+
+        async function requestChannelRecommendation() {
+          if (!simulationForm.checkValidity()) {
+            simulationForm.reportValidity();
+            throw new Error("Revisa los valores del formulario antes de optimizar canales.");
+          }
+          const request = readScenario(selectedBand);
+          const validationError = validateScenario(request);
+          if (validationError) throw new Error(validationError);
+          const radiosOnBand = request.access_points.filter(
+            (accessPoint) => accessPoint.frequency === selectedBand
+          );
+          if (radiosOnBand.length < 2) {
+            throw new Error("Agrega al menos dos AP en la banda seleccionada para optimizar canales.");
+          }
+          optimizeChannelsButton.disabled = true;
+          channelRecommendation.hidden = true;
+          formStatus.textContent = `Buscando una combinación de canales para ${selectedBand} GHz...`;
+          formStatus.dataset.state = "";
+          try {
+            const response = await fetch(`${apiBaseUrl}/api/simulacion/optimizar-canales`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(request)
+            });
+            let body;
+            try {
+              body = await response.json();
+            } catch {
+              throw new Error("La respuesta no corresponde a la API de simulación.");
+            }
+            if (!response.ok) {
+              throw new Error(body.detail || `La API respondió con estado ${response.status}.`);
+            }
+            pendingChannelRecommendation = body;
+            const before = body.before.average_sinr_db;
+            const after = body.after.average_sinr_db;
+            const change = after - before;
+            const beforeP10 = body.before.percentile_10_sinr_db;
+            const afterP10 = body.after.percentile_10_sinr_db;
+            channelRecommendationSummary.textContent =
+              `SINR promedio: ${before.toFixed(1)} → ${after.toFixed(1)} dB (${change >= 0 ? "+" : ""}${change.toFixed(1)} dB). Percentil 10: ${beforeP10.toFixed(1)} → ${afterP10.toFixed(1)} dB.`;
+            channelRecommendationList.replaceChildren(...body.recommended_channels.map((recommendation) => {
+              const row = document.createElement("div");
+              row.className = "channel-plan-row";
+              const current = body.current_channels.find((item) => item.id === recommendation.id);
+              const label = document.createElement("span");
+              label.textContent = recommendation.id;
+              const channels = document.createElement("strong");
+              channels.textContent = current.channel === recommendation.channel
+                ? `Canal ${recommendation.channel} · sin cambio`
+                : `Canal ${current.channel} → ${recommendation.channel}`;
+              row.append(label, channels);
+              return row;
+            }));
+            channelRecommendation.hidden = false;
+            formStatus.textContent = "Recomendación lista. Revisa el cambio y aplícalo si estás de acuerdo.";
+            formStatus.dataset.state = "success";
+          } finally {
+            optimizeChannelsButton.disabled = false;
+          }
+        }
+
+        const invalidateChannelRecommendation = () => {
+          pendingChannelRecommendation = null;
+          channelRecommendation.hidden = true;
+          currentSimulationStale = true;
+          updateSaveScenarioButton();
+        };
+        simulationForm.addEventListener("input", invalidateChannelRecommendation);
+        simulationForm.addEventListener("change", invalidateChannelRecommendation);
+
+        optimizeChannelsButton.addEventListener("click", () => {
+          requestChannelRecommendation().catch((error) => {
+            console.error("No se pudieron optimizar los canales.", error);
+            formStatus.textContent = error.message;
+            formStatus.dataset.state = "error";
+          });
+        });
+
+        applyChannelPlanButton.addEventListener("click", () => {
+          if (!pendingChannelRecommendation) return;
+          for (const recommendation of pendingChannelRecommendation.recommended_channels) {
+            const row = Array.from(accessPointList.querySelectorAll(".obstacle-row"))
+              .find((item) => item.dataset.accessPointId === recommendation.id);
+            if (row) row.querySelector('[data-access-point-field="channel"]').value = String(recommendation.channel);
+          }
+          channelRecommendation.hidden = true;
+          runSimulation(selectedBand).catch((error) => {
+            console.error("No se pudo aplicar la recomendación de canales.", error);
+            formStatus.textContent = error.message;
+            formStatus.dataset.state = "error";
+          });
+        });
 
         simulationForm.addEventListener("submit", (event) => {
           event.preventDefault();

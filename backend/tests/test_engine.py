@@ -8,6 +8,7 @@ from backend.app.engine import (
     _segment_intersects_boxes,
     evaluate_points,
     grid_axes,
+    optimize_channels,
     optimize_router,
     simulate,
 )
@@ -97,6 +98,85 @@ def test_custom_material_loss_overrides_orientative_default():
     assert "no es una medición experimental" in MATERIALS["brick"].source
 
 
+def wall_with_opening(opening_type: str, obstacle_id: str = "wall") -> Obstacle:
+    return Obstacle.model_validate(
+        {
+            "id": obstacle_id,
+            "type": "wall",
+            "center": {"x": 2, "y": 2, "z": 1.2},
+            "dimensions": {"x": 0.15, "y": 3.8, "z": 2.4},
+            "material": "brick",
+            "opening": {
+                "type": opening_type,
+                "width_m": 1.0,
+                "height_m": 1.4 if opening_type == "window" else 2.0,
+                "offset_m": 0.0,
+                "sill_height_m": 0.8 if opening_type == "window" else 0.0,
+            },
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    ("opening_type", "expected_loss", "expected_count"),
+    [("door", 0.0, 0), ("window", 3.0, 1)],
+)
+def test_wall_openings_use_clear_path_or_glass_attenuation(
+    opening_type, expected_loss, expected_count
+):
+    wall = wall_with_opening(opening_type)
+    request = make_request(
+        dimensions={"x": 4, "y": 4, "z": 2.4},
+        router={"x": 0.5, "y": 2, "z": 1.2},
+        obstacles=[wall],
+    )
+    fields = evaluate_points(request, np.array([[3.5, 2.0, 1.2]]))
+    assert fields["obstacle_loss_db"][0] == pytest.approx(expected_loss)
+    assert fields["obstacle_count"][0] == expected_count
+
+
+def test_wall_opening_keeps_solid_wall_attenuation_outside_aperture():
+    wall = wall_with_opening("door")
+    request = make_request(
+        dimensions={"x": 4, "y": 4, "z": 2.4},
+        router={"x": 0.5, "y": 0.5, "z": 1.2},
+        obstacles=[wall],
+    )
+    fields = evaluate_points(request, np.array([[3.5, 0.5, 1.2]]))
+    assert fields["obstacle_loss_db"][0] == pytest.approx(8.0)
+
+
+def test_doorway_is_open_to_receiver_points_and_router_placement():
+    door = wall_with_opening("door")
+    request = make_request(
+        dimensions={"x": 4, "y": 4, "z": 2.4},
+        router={"x": 2.0, "y": 2.0, "z": 1.2},
+        obstacles=[door],
+    )
+    fields = evaluate_points(request, np.array([[3.0, 2.0, 1.2]]))
+    assert fields["valid"].tolist() == [True]
+    assert fields["obstacle_loss_db"][0] == pytest.approx(0.0)
+
+
+def test_window_panel_remains_solid_for_receiver_points():
+    window = wall_with_opening("window")
+    request = make_request(obstacles=[window])
+    fields = evaluate_points(request, np.array([[2.0, 2.0, 1.2]]))
+    assert fields["valid"].tolist() == [False]
+
+
+def test_wall_opening_dimensions_and_type_are_validated():
+    wall = wall_with_opening("door").model_dump()
+    wall["opening"]["width_m"] = 4.0
+    with pytest.raises(ValueError, match="ancho de la abertura"):
+        make_request(obstacles=[wall])
+
+    furniture = wall_with_opening("window").model_dump()
+    furniture["type"] = "cabinet"
+    with pytest.raises(ValueError, match="tipo pared"):
+        make_request(obstacles=[furniture])
+
+
 @pytest.mark.parametrize("obstacle_type", ["table", "sofa", "shelf", "cabinet"])
 def test_furniture_visual_types_keep_the_same_box_loss_calculation(obstacle_type):
     wall = box_obstacle("brick")
@@ -133,6 +213,177 @@ def test_transmit_power_changes_rssi_by_same_amount():
     first = evaluate_points(make_request(), point)["rssi_dbm"][0]
     second = evaluate_points(make_request(transmit_power_dbm=26), point)["rssi_dbm"][0]
     assert second - first == pytest.approx(6)
+
+
+def test_multiple_access_points_assign_each_voxel_to_the_strongest_signal():
+    request = make_request(
+        dimensions={"x": 4, "y": 1, "z": 1},
+        router={"x": 0.5, "y": 0.5, "z": 0.5},
+        access_points=[
+            {"id": "ap-left", "position": {"x": 0.5, "y": 0.5, "z": 0.5}, "transmit_power_dbm": 20},
+            {"id": "ap-right", "position": {"x": 3.5, "y": 0.5, "z": 0.5}, "transmit_power_dbm": 20},
+        ],
+    )
+    points = np.array([[0.5, 0.5, 0.5], [3.5, 0.5, 0.5]])
+    fields = evaluate_points(request, points)
+    assert fields["serving_ap_index"].tolist() == [0, 1]
+    assert fields["rssi_dbm"][0] == pytest.approx(
+        evaluate_points(make_request(
+            dimensions={"x": 4, "y": 1, "z": 1},
+            router={"x": 0.5, "y": 0.5, "z": 0.5},
+        ), points[:1])["rssi_dbm"][0]
+    )
+    assert fields["rssi_dbm"][1] == pytest.approx(
+        evaluate_points(make_request(
+            dimensions={"x": 4, "y": 1, "z": 1},
+            router={"x": 3.5, "y": 0.5, "z": 0.5},
+        ), points[1:])["rssi_dbm"][0]
+    )
+
+
+def test_multiple_access_points_report_serving_distribution():
+    request = make_request(
+        dimensions={"x": 4, "y": 1, "z": 1},
+        router={"x": 0.5, "y": 0.5, "z": 0.5},
+        access_points=[
+            {"id": "ap-left", "position": {"x": 0.5, "y": 0.5, "z": 0.5}},
+            {"id": "ap-right", "position": {"x": 3.5, "y": 0.5, "z": 0.5}},
+        ],
+    )
+    _, response = simulate(request)
+    assert response["access_points"][1]["id"] == "ap-right"
+    assert response["statistics"]["serving_ap_voxels"] == {"ap-left": 2, "ap-right": 2}
+    assert response["fields"]["serving_ap_index_zyx"][0][0] == [0, 0, 1, 1]
+
+
+def test_access_points_are_limited_and_must_have_unique_ids_and_valid_positions():
+    base = {
+        "id": "ap-left",
+        "position": {"x": 1, "y": 1, "z": 1},
+    }
+    with pytest.raises(ValueError, match="identificadores de puntos de acceso"):
+        make_request(access_points=[base, {**base, "position": {"x": 2, "y": 2, "z": 1}}])
+    with pytest.raises(ValueError, match="dentro de las dimensiones"):
+        make_request(access_points=[{**base, "position": {"x": 5, "y": 1, "z": 1}}])
+    with pytest.raises(ValueError):
+        make_request(access_points=[{**base, "id": f"ap-{index}"} for index in range(9)])
+
+
+def test_access_point_inside_solid_obstacle_is_rejected():
+    request = make_request(
+        router={"x": 2, "y": 2, "z": 1.2},
+        access_points=[{"id": "ap-1", "position": {"x": 2, "y": 2, "z": 1.2}}],
+        obstacles=[box_obstacle("brick")],
+    )
+    with pytest.raises(SimulationError, match="punto de acceso"):
+        evaluate_points(request, np.array([[3.5, 0.5, 1.2]]))
+
+
+def test_same_channel_access_points_reduce_sinr_and_channel_separation_removes_overlap():
+    points = np.array([[2.0, 0.5, 0.5]])
+    access_points = [
+        {"id": "ap-left", "position": {"x": 0.5, "y": 0.5, "z": 0.5}, "frequency": "2.4", "channel": 1},
+        {"id": "ap-right", "position": {"x": 3.5, "y": 0.5, "z": 0.5}, "frequency": "2.4", "channel": 1},
+    ]
+    base = {
+        "dimensions": {"x": 4, "y": 1, "z": 1},
+        "router": {"x": 0.5, "y": 0.5, "z": 0.5},
+        "access_points": access_points,
+    }
+    co_channel = evaluate_points(make_request(**base), points)
+    separated = evaluate_points(
+        make_request(
+            **{
+                **base,
+                "access_points": [
+                    access_points[0],
+                    {**access_points[1], "channel": 6},
+                ],
+            }
+        ),
+        points,
+    )
+    assert co_channel["sinr_db"][0] < separated["sinr_db"][0]
+    assert separated["sinr_db"][0] == pytest.approx(separated["snr_db"][0])
+
+
+def test_access_points_on_different_bands_are_filtered_from_calculation():
+    request = make_request(
+        access_points=[
+            {
+                "id": "ap-24",
+                "position": {"x": 1, "y": 1, "z": 1},
+                "frequency": "2.4",
+                "channel": 1,
+            },
+            {
+                "id": "ap-5",
+                "position": {"x": 3, "y": 1, "z": 1},
+                "frequency": "5",
+                "channel": 36,
+            },
+        ]
+    )
+    _, result_24 = simulate(request, Frequency.GHZ_2_4)
+    _, result_5 = simulate(request, Frequency.GHZ_5)
+    assert [access_point["id"] for access_point in result_24["access_points"]] == ["ap-24"]
+    assert [access_point["id"] for access_point in result_5["access_points"]] == ["ap-5"]
+
+
+def test_radio_channel_must_be_valid_for_selected_band():
+    with pytest.raises(ValueError, match="canales del 1 al 13"):
+        make_request(
+            access_points=[
+                {
+                    "id": "invalid",
+                    "position": {"x": 1, "y": 1, "z": 1},
+                    "frequency": "2.4",
+                    "channel": 36,
+                }
+            ]
+        )
+
+
+def test_channel_optimizer_recommends_a_better_plan_for_cochannel_aps():
+    request = make_request(
+        dimensions={"x": 4, "y": 1, "z": 1},
+        router={"x": 0.5, "y": 0.5, "z": 0.5},
+        voxel_size_m=0.5,
+        access_points=[
+            {
+                "id": "ap-left",
+                "position": {"x": 0.5, "y": 0.5, "z": 0.5},
+                "frequency": "2.4",
+                "channel": 1,
+            },
+            {
+                "id": "ap-right",
+                "position": {"x": 3.5, "y": 0.5, "z": 0.5},
+                "frequency": "2.4",
+                "channel": 1,
+            },
+        ],
+    )
+    recommendation = optimize_channels(request)
+    assert recommendation["after"]["average_sinr_db"] > recommendation["before"]["average_sinr_db"]
+    assert recommendation["after"]["percentile_10_sinr_db"] >= recommendation["before"]["percentile_10_sinr_db"]
+    assert len({item["channel"] for item in recommendation["recommended_channels"]}) > 1
+    assert recommendation["evaluation_voxels"] > 0
+
+
+def test_channel_optimizer_requires_multiple_radios_on_selected_band():
+    request = make_request(
+        access_points=[
+            {
+                "id": "ap-1",
+                "position": {"x": 1, "y": 1, "z": 1},
+                "frequency": "2.4",
+                "channel": 1,
+            }
+        ]
+    )
+    with pytest.raises(SimulationError, match="al menos dos AP"):
+        optimize_channels(request)
 
 
 def test_snr_uses_bandwidth_noise_figure_and_linear_interference_sum():
